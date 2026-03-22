@@ -1,0 +1,24 @@
+{
+  "testCases": [
+    {
+      "description": "Ed25519 signing with SHA-384 canonical input",
+      "inputs": {
+        "did": "did:key:z6MkTestVector1",
+        "timestamp": "2026-03-21T14:30:00Z",
+        "nonce": "a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8",
+        "method": "POST",
+        "path": "/aid/skills/sol-price",
+        "body": "{\"token\":\"SOL\"}",
+        "privateKeySeed": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      },
+      "intermediate": {
+        "bodyHashHex": "83cd971fc2c4b7b70929e4b4ffb25cf89e55821a2e59fed873fbafd16644ed5617d4c7c98cabfd9186c06adb089edfea",
+        "signatureInputHex": "7effb83d7a10244cfc09f57971b0a70154627d495d83d1fc8c4473d674a72d1b86c7d4a6db44c57e76e3311398d56c0a"
+      },
+      "expected": {
+        "publicKeyHex": "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6",
+        "signatureBase64url": "6xPAWmBtkDJdxCVTdHso8DtmxLG62Kl8aG3LZh2FPxOlDU4PFILprQ9sHwyMCMgokkSbJXJF0vK_qtYKhWdhCA"
+      }
+    }
+  ]
+}

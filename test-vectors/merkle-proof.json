@@ -1,0 +1,37 @@
+{
+  "testCases": [
+    {
+      "description": "Merkle proof verification for receipt leaf",
+      "inputs": {
+        "receiptId": "rcpt-test1",
+        "timestamp": "2026-03-21T14:30:00Z",
+        "payerDid": "did:key:zA",
+        "providerDid": "did:key:zB"
+      },
+      "tree": {
+        "leaves": [
+          "2d0404d829bcfba1ff571aeedb5bca8cf5359eb4bf3262c39b3ecbfb9ad6d5567d28c2a61bc3ef4366168eaec25de1fd",
+          "8ad1c76193081800e7ffd8519ac3affd8bccf92b1619c897a5bcfbacd22b40f1383429dcb7cd7ee3d1ff0359aa858506",
+          "d3792698daa3653ce43a66f6b42c2c1c3949be2fc989ee97c3b346961c5eada98afb33a069a382b1bc332f15570d5d52",
+          "c609e7f80086db8d2645ae21a384a2bb2252770bdbf87d99969f9d918768e61b382b1e79cb51b5ddf67f65aab3b533c6"
+        ],
+        "root": "8b3e72231d884d738d264b6f40fe61b6b8ea25dcc2625f511e92194b0ce06faa6b0d53605f9987692ab802b221e7ca72"
+      },
+      "proof": [
+        {
+          "position": "right",
+          "hash": "8ad1c76193081800e7ffd8519ac3affd8bccf92b1619c897a5bcfbacd22b40f1383429dcb7cd7ee3d1ff0359aa858506"
+        },
+        {
+          "position": "right",
+          "hash": "0cd95f07573a6a957940a9bfc302214e5ead422204c2d8008d55978c11eb72f07646b4200b619375392d793d1b498ebb"
+        }
+      ],
+      "expected": {
+        "leafHash": "2d0404d829bcfba1ff571aeedb5bca8cf5359eb4bf3262c39b3ecbfb9ad6d5567d28c2a61bc3ef4366168eaec25de1fd",
+        "root": "8b3e72231d884d738d264b6f40fe61b6b8ea25dcc2625f511e92194b0ce06faa6b0d53605f9987692ab802b221e7ca72",
+        "valid": true
+      }
+    }
+  ]
+}
