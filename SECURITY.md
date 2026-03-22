@@ -4,7 +4,7 @@
 
 If you discover a security vulnerability in the AID Protocol specification or any `@aidprotocol` package, please report it responsibly.
 
-**Email:** security@claw-net.org
+**Email:** jfair1028@gmail.com
 
 **Do NOT:**
 - Open a public GitHub issue for security vulnerabilities
