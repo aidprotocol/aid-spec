@@ -22,7 +22,7 @@
       },
       "expected": {
         "score": 79,
-        "verdict": "trusted",
+        "verdict": "standard",
         "proofHash": "59410011a6395a8f86f8669b86e99aa5995584da2a0ae729bffe87d9bef430337d727befc196169a6a5e352170aad1e3"
       }
     }
