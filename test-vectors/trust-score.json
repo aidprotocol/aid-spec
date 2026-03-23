@@ -25,6 +25,32 @@
         "verdict": "standard",
         "proofHash": "59410011a6395a8f86f8669b86e99aa5995584da2a0ae729bffe87d9bef430337d727befc196169a6a5e352170aad1e3"
       }
+    },
+    {
+      "description": "Cross-implementation reference vector — every AID implementation MUST produce this exact hash",
+      "inputs": {
+        "successRate": 0.95,
+        "chainCoverage": 0.8,
+        "attestationCount": 500,
+        "manifestAdherence": 0.9
+      },
+      "weights": {
+        "successRate": 40,
+        "chainCoverage": 25,
+        "volume": 20,
+        "manifestAdherence": 15
+      },
+      "intermediate": {
+        "volumeNormalized": 0.5,
+        "rawScore": 82.3,
+        "jcsCanonicalizedProofData": "{\"inputs\":{\"attestationCount\":500,\"chainCoverage\":0.8,\"manifestAdherence\":0.9,\"successRate\":0.95},\"score\":82,\"weights\":{\"chainCoverage\":25,\"manifestAdherence\":15,\"successRate\":40,\"volume\":20}}"
+      },
+      "expected": {
+        "score": 82,
+        "verdict": "trusted",
+        "proofHash": "becd619fd5ffb9d7b8efb89145fb0ea676926fb435873d68955ccc96b5bdadfe2c08f13741100a819463f68599f2a33b"
+      },
+      "note": "If your implementation produces a different proofHash, your JCS or SHA-384 implementation is non-compliant"
     }
   ]
 }
