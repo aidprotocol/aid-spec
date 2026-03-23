@@ -322,23 +322,27 @@ Where JCS is JSON Canonicalization Scheme (RFC 8785). Given identical inputs, ev
 
 **`avoid` flag:** A separate manual flag applied by validators or triggered by structured reports (spam, fraud, copyright, quality). Not score-based — an agent can be score 70 and flagged `avoid`. Overrides all tiers: settlement reverts to prepay-only, no discounts, feedback weight set to 0. Removal requires admin review or validator consensus (3 validators agree to lift).
 
-### 3.4 Three-Layer Trust Lifecycle
+### 3.4 Trust Data Lifecycle
+
+Trust scores are computed from two data sources:
 
 ```
-MANIFEST (intent)  -->  EXECUTION PROOF (evidence)  -->  ATTESTATION (outcome)
-     |                        |                            |
-     |  "I will check         |  "I called CoinGecko +    |  "success, 3/3"
-     |   3 sources"           |   Birdeye + Jupiter,      |
-     |                        |   230ms total"             |
-     |  optional              |  automatic                 |  automatic
-     |  (+15% trust bonus)    |  (step-level hashes)       |  (hash-chained, signed)
-     +------------------------+----------------------------+
-                    ALL feed into trust score
+MANIFEST (optional intent)  -->  ATTESTATION (automatic evidence + outcome)
+     |                                |
+     |  "I will check 3 sources"      |  "Called CoinGecko (85ms) + Birdeye (120ms)
+     |  Capabilities, SLA, schema     |   + Jupiter (25ms cached). Success, 3/3."
+     |                                |
+     |  optional, +15% trust bonus    |  automatic, includes step-level execution evidence
+     |                                |  hash-chained, signed, sequence-numbered
+     +--------------------------------+
+              BOTH feed into trust score
 ```
 
-- **Manifest:** OPTIONAL pre-execution intent declaration. Agents with high manifest adherence earn the 15% `manifestAdherence` trust bonus. Manifests declare expected capabilities, inputs, outputs, and SLA guarantees.
-- **Execution proof:** AUTOMATIC step-level evidence captured during execution. Each step is individually hashed (SHA-384) and stored. Includes: endpoint called, success/failure, duration, cost, cached status.
-- **Attestation:** AUTOMATIC post-execution outcome record. Signed, hash-chained to predecessor, sequence-numbered. See Section 3.5 for format.
+- **Manifest:** OPTIONAL pre-execution intent declaration. Agents that declare manifests AND follow through earn the 15% `manifestAdherence` trust bonus. See the [AID Manifest Profile](profiles/aid-manifest-profile.md) for the full format specification.
+
+- **Attestation:** AUTOMATIC post-execution record that captures both the execution evidence (what steps were taken, how long each took, what was cached) and the outcome (success/failure). This is a single atomic record — not two separate operations. See Section 3.5 for the format, and the [AID Attestation Profile](profiles/aid-attestation-profile.md) for the full interoperability specification.
+
+Attestation records are the canonical input to the trust scoring formula. Any platform that produces attestations in the standard format (see Attestation Profile) can feed any AID-compatible trust oracle.
 
 ### 3.5 Attestation Record Format
 
@@ -712,7 +716,23 @@ If the client includes `X-AID-DID` + `X-AID-PROOF`, the response additionally in
 
 ## 8. Protocol Profiles
 
-AID is transport-agnostic. The following profiles define how AID integrates with specific protocols.
+AID is modular. The core spec (Sections 1-7) defines scoring, headers, and verification. Profiles define integration with specific protocols and data formats.
+
+**Transport profiles** (how AID connects to existing protocols):
+
+| Profile | Integration Point | Status |
+|---------|------------------|--------|
+| [AID-MCP](profiles/aid-mcp-profile.md) | MCP tool server middleware | Published |
+| [AID-A2A](profiles/aid-a2a-profile.md) | A2A agent card extension | Published |
+| [AID-x402](profiles/aid-x402-profile.md) | x402 payment trust headers | Published |
+| [AID-MPP](profiles/aid-mpp-profile.md) | Stripe MPP session authorization | Published |
+
+**Data profiles** (how AID data is formatted for interoperability):
+
+| Profile | Purpose | Required? |
+|---------|---------|-----------|
+| [AID Attestation](profiles/aid-attestation-profile.md) | Standard attestation record format | REQUIRED for trust oracles, OPTIONAL for consumers |
+| [AID Manifest](profiles/aid-manifest-profile.md) | Pre-execution intent declaration | OPTIONAL (+15% trust bonus when used) |
 
 ### 8.1 AID-MCP Profile
 
