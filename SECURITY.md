@@ -18,9 +18,8 @@ If you discover a security vulnerability in the AID Protocol specification or an
 ## Scope
 
 This security policy covers:
-- The AID Protocol Specification (`spec/`)
-- `@aidprotocol/trust-compute` (npm)
-- `@aidprotocol/mcp-trust` (npm)
+- The AID Protocol Specification (`spec/`, `protocols/`)
+- All `@aidprotocol/*` packages (npm) and `aid-trust` (PyPI)
 - Test vectors (`test-vectors/`)
 
 ## Ed25519 Implementation Requirements

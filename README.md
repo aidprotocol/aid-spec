@@ -135,37 +135,63 @@ Receipts are the raw material for trust scores. More receipts → richer attesta
 ## Repository Structure
 
 ```
+protocols/
+  aid-trust/spec.md             # Protocol 1: Identity + Trust Scoring
+  aid-receipt/spec.md            # Protocol 2: Dual-Signed Receipts (DSIR)
+  aid-settle/spec.md             # Protocol 3: Trust-Gated Settlement
+  composability.md               # Cross-protocol composition rules
+
 spec/
-  aid-protocol-v1.md            # Full protocol specification
-  profiles/
-    aid-mcp-profile.md          # MCP integration profile
-    aid-a2a-profile.md          # A2A integration profile
-    aid-x402-profile.md         # x402 integration profile
-    aid-mpp-profile.md          # MPP integration profile
+  aid-protocol-v1.md             # Full monolithic spec (reference)
+  profiles/                      # 8 transport integration profiles
+    aid-mcp-profile.md           # MCP integration
+    aid-a2a-profile.md           # A2A integration
+    aid-x402-profile.md          # x402 integration
+    aid-x402-trust-extension.md  # x402 trust extension spec
+    aid-mpp-profile.md           # MPP integration
+    aid-erc8004-profile.md       # ERC-8004 integration
+    aid-manifest-profile.md      # Manifest data profile
+    aid-attestation-profile.md   # Attestation data profile
+
+packages/                        # Published @aidprotocol packages
+  trust-compute/                 # Canonical scoring library
+  mcp-trust/                     # MCP server trust middleware
+  middleware/                    # Express/Fastify AID verification
+  aid-sdk/                       # TypeScript SDK
+  solana-trust/                  # Solana Agent Registry bridge
+  facilitator/                   # Open-source x402 facilitator
+  x402-enhanced/                 # x402 + trust headers middleware
+  trust-gate/                    # GitHub Action for CI/CD trust gates
+  aid-python/                    # Python package (CrewAI/LangGraph)
 
 test-vectors/
-  signing.json                  # Ed25519 signing test vectors
-  signing-ml-dsa.json           # ML-DSA test vectors (placeholder)
-  trust-score.json              # Trust score computation vectors
-  merkle-proof.json             # Merkle proof verification vectors
-  succession.json               # DID succession test vectors
+  signing.json                   # Ed25519 signing test vectors
+  trust-score.json               # Trust score computation vectors
+  merkle-proof.json              # Merkle proof verification vectors
 
-reference/
-  (minimal reference implementation)
-
-docs/
-  crypto-agility.md             # Cryptographic migration guide
-  nist-nccoe-comment.md         # NIST NCCoE public comment
-  guardian-protocol.md           # Guardian system specification
-  succession-protocol.md         # DID rotation and trust transfer
+docs/                            # Supporting documents
+  governance-model.md            # Trust formula versioning
+  decentralization-roadmap.md    # Progressive decentralization plan
+  nist-nccoe-comment.md          # NIST NCCoE public comment
+  security-harness-results.md    # Security testing results
+  aid-x402-security-mapping.md   # x402 security alignment
+  ara-compatibility.md           # AWS ARA compatibility
+  aid-tap-reference.md           # Visa TAP reference
 ```
 
 ## Packages
 
 | Package | Description | Registry |
 |---|---|---|
-| `@aidprotocol/trust-compute` | Standalone trust scoring library | npm |
-| `@aidprotocol/mcp-trust` | MCP server trust middleware | npm |
+| `@aidprotocol/trust-compute` | Deterministic trust scoring library | [npm](https://www.npmjs.com/package/@aidprotocol/trust-compute) |
+| `@aidprotocol/mcp-trust` | One-line MCP server trust middleware | [npm](https://www.npmjs.com/package/@aidprotocol/mcp-trust) |
+| `@aidprotocol/middleware` | Express/Fastify AID verification | [npm](https://www.npmjs.com/package/@aidprotocol/middleware) |
+| `@aidprotocol/sdk` | TypeScript SDK (`AID.connect()`) | [npm](https://www.npmjs.com/package/@aidprotocol/sdk) |
+| `@aidprotocol/solana-trust` | Solana Agent Registry trust bridge | [npm](https://www.npmjs.com/package/@aidprotocol/solana-trust) |
+| `@aidprotocol/facilitator` | Open-source x402 facilitator (zero fees) | [npm](https://www.npmjs.com/package/@aidprotocol/facilitator) |
+| `@aidprotocol/x402-enhanced` | Add trust to any x402 server | [npm](https://www.npmjs.com/package/@aidprotocol/x402-enhanced) |
+| `@aidprotocol/trust-gate` | GitHub Action — CI/CD trust gate | [GitHub](https://github.com/aidprotocol/aid-spec/tree/main/packages/trust-gate) |
+| `aid-trust` | Python package (CrewAI/LangGraph) | [PyPI](https://pypi.org/project/aid-trust/) |
 
 ## Standards Alignment
 
@@ -178,9 +204,23 @@ docs/
 | **CSA** | Mapped | Trust verdicts → Agentic Trust Framework maturity levels |
 | **NIST FIPS 204** | Planned | ML-DSA support for post-quantum migration |
 
+## Protocol Family
+
+AID is split into three composable protocols:
+
+| Protocol | What | Status |
+|---|---|---|
+| **AID-Trust** | Identity + trust scoring + Merkle verification | 1.0-draft (pre-DIF) |
+| **AID-Receipt** | Dual-signed interaction receipts (DSIR) + commitment logs | 0.1-draft |
+| **AID-Settle** | Trust-gated pricing + settlement modes | 0.1-draft |
+
+AID-Trust is always required. AID-Receipt and AID-Settle are independent extensions. See [composability.md](protocols/composability.md).
+
+**ERC-8004 Identity:** AID Protocol is registered on Base mainnet (Agent ID: 36118).
+
 ## Reference Implementation
 
-[**ClawNet**](https://clawnetwork.com) is the reference implementation with production trust scoring, Merkle-anchored attestations, and 344 API endpoints.
+[**ClawNet**](https://claw-net.org) is the reference implementation with production trust scoring, Merkle-anchored attestations, and 344 API endpoints.
 
 ## Security
 
@@ -200,6 +240,6 @@ Apache 2.0 — see [**LICENSE**](./LICENSE)
 
 ## Contributing
 
-AID is an open protocol. Contributions welcome via pull requests. The specification is intended for submission to DIF as a TAAWG work item.
+AID is an open protocol. Contributions welcome via pull requests. The specification is intended for submission to DIF TAAWG as a work item.
 
-See [**CONTRIBUTING.md**](./CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
