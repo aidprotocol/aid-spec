@@ -146,6 +146,7 @@ This extension is additive and backwards-compatible:
 - Servers that don't support `agent-trust` simply omit it from `PaymentRequired`
 - Clients that don't support `agent-trust` ignore it and pay normally
 - The extension composes with other extensions (`reputation`, `sign-in-with-x`, etc.)
+- Servers MAY apply local policy weightings on top of AID trust scores for domain-specific risk decisions. The base score remains deterministic and portable.
 
 ### ERC-8004 Interoperability
 

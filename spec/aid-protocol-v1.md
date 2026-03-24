@@ -693,6 +693,39 @@ Every AID-compatible server MUST expose `GET /aid/heartbeat`:
 
 **Also available at:** `/.well-known/aid-platform-key` — the platform's public key in JWK format, for A2A trust verification and heartbeat response validation.
 
+### 7.1.1 Well-Known Discovery Endpoint
+
+AID-conformant servers SHOULD serve `/.well-known/aid.json` for automated discovery. This follows the same pattern as `/.well-known/agent-card.json` (A2A) and `/.well-known/ucp` (UCP).
+
+```json
+{
+  "did": "did:web:api.example.com",
+  "trustEndpoint": "/v1/aid/:did/trust",
+  "verifyEndpoint": "/v1/aid/verify",
+  "feedbackEndpoint": "/v1/aid/:did/feedback",
+  "supportedAlgorithms": ["Ed25519"],
+  "supportedHashAlgorithms": ["SHA-256"],
+  "specVersion": "1.0.0",
+  "minTrustScore": 0,
+  "spec": "https://github.com/aidprotocol/aid-spec"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `did` | MUST | Server's DID (did:key or did:web) |
+| `trustEndpoint` | MUST | Path to query trust scores |
+| `supportedAlgorithms` | MUST | Signature algorithms accepted |
+| `specVersion` | MUST | AID spec version implemented |
+| `minTrustScore` | RECOMMENDED | Minimum trust score for access (0 = accepts anyone) |
+| `verifyEndpoint` | OPTIONAL | Offline verification endpoint |
+| `feedbackEndpoint` | OPTIONAL | Post-interaction feedback submission |
+
+This enables three discovery paths:
+1. **HTTP discovery:** `GET /.well-known/aid.json` — works everywhere, no dependencies
+2. **ERC-8004 discovery:** AID listed as a service in the agent card
+3. **x402 discovery:** `agent-trust` extension in `PaymentRequired`
+
 ### 7.2 Authenticated Heartbeat
 
 If the client includes `X-AID-DID` + `X-AID-PROOF`, the response additionally includes personalized data:
