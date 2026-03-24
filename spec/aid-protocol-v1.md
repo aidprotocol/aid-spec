@@ -703,10 +703,12 @@ AID-conformant servers SHOULD serve `/.well-known/aid.json` for automated discov
   "trustEndpoint": "/v1/aid/:did/trust",
   "verifyEndpoint": "/v1/aid/verify",
   "feedbackEndpoint": "/v1/aid/:did/feedback",
-  "supportedAlgorithms": ["Ed25519"],
+  "supportedSigningAlgorithms": ["Ed25519"],
   "supportedHashAlgorithms": ["SHA-256"],
   "specVersion": "1.0.0",
   "minTrustScore": 0,
+  "minTrustVector": null,
+  "trustVectorSupported": true,
   "spec": "https://github.com/aidprotocol/aid-spec"
 }
 ```
@@ -715,9 +717,12 @@ AID-conformant servers SHOULD serve `/.well-known/aid.json` for automated discov
 |-------|----------|-------------|
 | `did` | MUST | Server's DID (did:key or did:web) |
 | `trustEndpoint` | MUST | Path to query trust scores |
-| `supportedAlgorithms` | MUST | Signature algorithms accepted |
+| `supportedSigningAlgorithms` | MUST | Signature algorithms accepted (e.g., Ed25519, ML-DSA) |
+| `supportedHashAlgorithms` | MUST | Hash algorithms accepted (e.g., SHA-256) |
 | `specVersion` | MUST | AID spec version implemented |
-| `minTrustScore` | RECOMMENDED | Minimum trust score for access (0 = accepts anyone) |
+| `minTrustScore` | RECOMMENDED | Minimum scalar trust score for access (0 = accepts anyone) |
+| `trustVectorSupported` | RECOMMENDED | Whether server returns category-level trust scores |
+| `minTrustVector` | OPTIONAL | Per-dimension minimum requirements (null = no vector requirement) |
 | `verifyEndpoint` | OPTIONAL | Offline verification endpoint |
 | `feedbackEndpoint` | OPTIONAL | Post-interaction feedback submission |
 
