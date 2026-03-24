@@ -58,13 +58,13 @@ We have deployed a production system (AID — Agent Identity Document) that addr
 This is not a theoretical proposal. The following capabilities are deployed in production on ClawNet's agent orchestration platform:
 
 - **Agent registration with Ed25519 `did:key` identifiers** — full identity lifecycle including register, resolve, rotate key, freeze, delete, verify, export, and trust lookup
-- **Signed attestations on every transaction** — HMAC-SHA384 with hash chaining for tamper detection, sequence numbers for replay protection
+- **Signed attestations on every transaction** — HMAC-SHA256 with hash chaining for tamper detection, sequence numbers for replay protection
 - **Merkle-anchored trust snapshots** — rebuilt every 4 hours, enabling offline proof verification
 - **Offline identity verification** — pure cryptographic verification with zero database or network calls
 - **Granular policy engine** — per-transaction caps, skill whitelists, provider whitelists, time-window constraints on delegated keys
 - **Public trust API** — any party can query an agent's trust verdict without authentication, rate-limited to prevent abuse
 - **Open-source scoring library** — deterministic trust computation, MIT license, independently verifiable
-- **Crypto-agile architecture** — SHA-384 trust-layer hashing, algorithm-versioned signatures, designed for NIST post-quantum migration (ML-DSA, FIPS 204) without protocol-level changes
+- **Crypto-agile architecture** — SHA-256 trust-layer hashing, algorithm-versioned signatures, designed for NIST post-quantum migration (ML-DSA, FIPS 204) without protocol-level changes
 
 The system has been hardened against 46 documented attack vectors including Sybil reputation gaming, bust-out fraud, permit signature phishing, feedback cartel collusion, and trust oscillation farming.
 

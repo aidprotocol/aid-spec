@@ -15,7 +15,7 @@ See Section 8.2 of the [AID Protocol Specification](../aid-protocol-v1.md) for t
       "trustVerdict": "proceed",
       "verified": true,
       "attestationCount": 1247,
-      "merkleRoot": "sha384:9c4d...",
+      "merkleRoot": "sha256:9c4d...",
       "heartbeatUrl": "https://api.example.com/aid/heartbeat",
       "trustTimestamp": "2026-03-21T14:00:00Z",
       "trustProof": "<Ed25519 signature>"

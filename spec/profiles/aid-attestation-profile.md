@@ -30,13 +30,13 @@ Every attestation MUST include these fields:
   "actionType": "skill_invoke",
   "actionEndpoint": "POST /v1/skills/sol-price/invoke",
   "outcomeStatus": "success",
-  "inputHash": "<sha384 hex of request payload>",
-  "responseHash": "<sha384 hex of response payload>",
+  "inputHash": "<sha256 hex of request payload>",
+  "responseHash": "<sha256 hex of response payload>",
   "creditsCharged": 1.5,
   "durationMs": 230,
-  "prevAttestationHash": "<sha384 hex of previous attestation>",
-  "signature": "<HMAC-SHA384 or Ed25519 signature>",
-  "hashAlgorithm": "sha384",
+  "prevAttestationHash": "<sha256 hex of previous attestation>",
+  "signature": "<HMAC-SHA256 or Ed25519 signature>",
+  "hashAlgorithm": "sha256",
   "createdAt": "2026-03-21T14:30:02Z"
 }
 ```
@@ -50,13 +50,13 @@ Every attestation MUST include these fields:
 | `agentDid` | string | DID of the agent this attestation is for |
 | `actionType` | string | What was done (e.g., `skill_invoke`, `data_query`, `orchestrate`, `llm_prompt`) |
 | `outcomeStatus` | enum | `success`, `partial`, or `failure` |
-| `inputHash` | string | SHA-384 hex digest of the request payload. Content-addressed — proves what was requested without revealing it |
-| `responseHash` | string | SHA-384 hex digest of the response payload |
+| `inputHash` | string | SHA-256 hex digest of the request payload. Content-addressed — proves what was requested without revealing it |
+| `responseHash` | string | SHA-256 hex digest of the response payload |
 | `creditsCharged` | number | Cost of this transaction |
 | `durationMs` | integer | Execution time in milliseconds |
-| `prevAttestationHash` | string | SHA-384 of the previous attestation record. Creates a tamper-evident hash chain |
-| `signature` | string | HMAC-SHA384 or Ed25519 signature over the attestation content |
-| `hashAlgorithm` | string | Hash algorithm used (MUST be `sha384` for v1.0) |
+| `prevAttestationHash` | string | SHA-256 of the previous attestation record. Creates a tamper-evident hash chain |
+| `signature` | string | HMAC-SHA256 or Ed25519 signature over the attestation content |
+| `hashAlgorithm` | string | Hash algorithm used (MUST be `sha256` for v1.0) |
 | `createdAt` | string | ISO 8601 UTC timestamp |
 
 ### Optional Fields
@@ -90,15 +90,15 @@ When `executionSteps` is present, the attestation includes step-level proof of w
     }
   ],
   "sourceHashes": [
-    { "source": "coingecko-price", "hash": "<sha384>", "fetchedAt": "2026-03-21T14:30:00Z" },
-    { "source": "birdeye-price", "hash": "<sha384>", "fetchedAt": "2026-03-21T14:30:01Z" }
+    { "source": "coingecko-price", "hash": "<sha256>", "fetchedAt": "2026-03-21T14:30:00Z" },
+    { "source": "birdeye-price", "hash": "<sha256>", "fetchedAt": "2026-03-21T14:30:01Z" }
   ],
   "executionSummary": {
     "totalSteps": 2,
     "successfulSteps": 2,
     "cachedSteps": 0,
     "totalLatencyMs": 205,
-    "proofHash": "<sha384 of step data>"
+    "proofHash": "<sha256 of step data>"
   }
 }
 ```
@@ -108,7 +108,7 @@ Each step is individually hashed so that:
 - Each step's success/failure is independently recorded
 - Cached steps are distinguished from live calls
 
-The `proofHash` is `SHA-384(JCS(steps))` — deterministic, verifiable by anyone with the step data.
+The `proofHash` is `SHA-256(JCS(steps))` — deterministic, verifiable by anyone with the step data.
 
 ## Execution Steps (Field Definitions)
 
@@ -126,15 +126,15 @@ Attestations form a tamper-evident chain via `prevAttestationHash`:
 
 ```
 att-001 (prevHash: "000...000")
-  ↓ SHA-384(att-001)
+  ↓ SHA-256(att-001)
 att-002 (prevHash: hash of att-001)
-  ↓ SHA-384(att-002)
+  ↓ SHA-256(att-002)
 att-003 (prevHash: hash of att-002)
 ```
 
 Modifying any historical attestation invalidates all subsequent hashes. This is the `chainCoverage` dimension in trust scoring (25% weight).
 
-The first attestation for a new agent uses `prevAttestationHash: "0" × 96` (96 zero hex chars = SHA-384 length).
+The first attestation for a new agent uses `prevAttestationHash: "0" × 96` (96 zero hex chars = SHA-256 length).
 
 ## How Attestations Feed Trust Scoring
 

@@ -44,7 +44,7 @@ The protocol provides:
 1. **Trust is computed, not declared.** Scores derive from verifiable attestation history, not self-reported claims.
 2. **Identity is self-certifying.** The public key IS the identifier. No registry lookup required.
 3. **Verification is offline.** Ed25519 signatures + Merkle proofs = pure math, zero network calls.
-4. **Algorithm-agile.** Every document includes `signatureAlgorithm`, `algorithmVersion`, `hashAlgorithm`. Never hardcode Ed25519 or SHA-384.
+4. **Algorithm-agile.** Every document includes `signatureAlgorithm`, `algorithmVersion`, `hashAlgorithm`. Never hardcode Ed25519 or SHA-256.
 5. **Complementary, not competitive.** AID plugs into existing protocols — it does not replace them.
 6. **Transparent.** The scoring formula is published, open-source, and independently verifiable.
 7. **Progressive decentralization.** The reference implementation is centralized, but the architecture is designed so that any component can be independently verified, challenged, or replaced.
@@ -124,7 +124,7 @@ Every agent has an AID document containing:
   "version": "1.0.0",
   "signatureAlgorithm": "EdDSA",
   "algorithmVersion": "1.0",
-  "hashAlgorithm": "sha384",
+  "hashAlgorithm": "sha256",
   "agent": {
     "displayName": "my-trading-bot",
     "agentType": "autonomous",
@@ -148,12 +148,12 @@ Every agent has an AID document containing:
       "volume": 20,
       "manifestAdherence": 15
     },
-    "proofHash": "<sha384 hex>",
+    "proofHash": "<sha256 hex>",
     "formulaVersion": "1.0.0",
-    "hashAlgorithm": "sha384"
+    "hashAlgorithm": "sha256"
   },
   "trustChain": {
-    "merkleRoot": "<sha384 hex>",
+    "merkleRoot": "<sha256 hex>",
     "attestationCount": 247,
     "chainLength": 245
   },
@@ -198,17 +198,17 @@ Every agent has an AID document containing:
 
 ### 2.3 Crypto-Agility
 
-AID is algorithm-agile by design. The current reference implementation uses Ed25519 for signatures and SHA-384 for trust-layer hashing.
+AID is algorithm-agile by design. The current reference implementation uses Ed25519 for signatures and SHA-256 for trust-layer hashing.
 
 The protocol supports algorithm migration via versioned key types, enabling transition to NIST post-quantum signatures (ML-DSA, FIPS 204) without protocol-level changes. Hybrid Ed25519 + ML-DSA signatures are supported during the migration period.
 
 **Requirements for implementers:**
 - All AID documents MUST include `signatureAlgorithm`, `algorithmVersion`, and `hashAlgorithm` fields.
 - Verifiers MUST read these fields and dispatch to the correct verification algorithm.
-- Implementations MUST NOT hardcode `Ed25519` or `sha384` — always read from the document.
+- Implementations MUST NOT hardcode `Ed25519` or `sha256` — always read from the document.
 
 **Migration timeline (per NIST IR 8547):**
-- **Now:** Ed25519 + SHA-384
+- **Now:** Ed25519 + SHA-256
 - **2027+:** Hybrid Ed25519 + ML-DSA (dual signatures, backwards compatible)
 - **2030:** ML-DSA primary (Ed25519 deprecated by NIST)
 
@@ -297,7 +297,7 @@ finalScore = min(100, round(rawScore * verificationMultiplier))
 Every trust score MUST include a cryptographic proof hash:
 
 ```
-proofHash = SHA-384(JCS({inputs, weights, score}))
+proofHash = SHA-256(JCS({inputs, weights, score}))
 ```
 
 Where JCS is JSON Canonicalization Scheme (RFC 8785). Given identical inputs, every implementation MUST produce identical proof hashes. This enables independent verification using the open-source `@aidprotocol/trust-compute` library.
@@ -355,11 +355,11 @@ Every transaction produces a signed attestation:
   "agentDid": "did:key:zABC...",
   "actionType": "skill_invoke",
   "outcomeStatus": "success",
-  "inputHash": "<sha384 hex of request>",
-  "responseHash": "<sha384 hex of response>",
+  "inputHash": "<sha256 hex of request>",
+  "responseHash": "<sha256 hex of response>",
   "sourceHashes": [
-    { "source": "coingecko-price", "hash": "<sha384>", "fetchedAt": "2026-03-21T14:30:00Z" },
-    { "source": "birdeye-price", "hash": "<sha384>", "fetchedAt": "2026-03-21T14:30:01Z" }
+    { "source": "coingecko-price", "hash": "<sha256>", "fetchedAt": "2026-03-21T14:30:00Z" },
+    { "source": "birdeye-price", "hash": "<sha256>", "fetchedAt": "2026-03-21T14:30:01Z" }
   ],
   "executionProof": {
     "totalSteps": 3,
@@ -367,17 +367,17 @@ Every transaction produces a signed attestation:
     "cachedSteps": 1,
     "totalLatencyMs": 230,
     "stepEndpoints": ["coingecko-price", "birdeye-price", "jupiter-price"],
-    "proofHash": "<sha384 hex>"
+    "proofHash": "<sha256 hex>"
   },
   "manifestAdherence": {
     "aligned": true,
     "confidence": 0.95
   },
-  "prevAttestationHash": "<sha384 hex of previous attestation>",
+  "prevAttestationHash": "<sha256 hex of previous attestation>",
   "creditsCharged": 1.5,
   "durationMs": 230,
-  "signature": "<HMAC-SHA384 with platform signing key>",
-  "hashAlgorithm": "sha384",
+  "signature": "<HMAC-SHA256 with platform signing key>",
+  "hashAlgorithm": "sha256",
   "createdAt": "2026-03-21T14:30:02Z"
 }
 ```
@@ -436,12 +436,12 @@ Implementers MAY use adaptive decay rates per category (e.g., faster decay for h
 The canonical signing input binds the signature to the DID, timestamp, nonce, HTTP method, path, and request body:
 
 ```
-signatureInput = SHA-384(
+signatureInput = SHA-256(
   did + "\n" +
   timestamp + "\n" +
   nonce + "\n" +
   method + " " + path + "\n" +
-  SHA-384(requestBody)
+  SHA-256(requestBody)
 )
 
 X-AID-PROOF = base64url(Ed25519Sign(privateKey, signatureInput))
@@ -449,7 +449,7 @@ X-AID-PROOF = base64url(Ed25519Sign(privateKey, signatureInput))
 
 **Encoding requirements:**
 - Timestamps MUST be UTC with Z suffix (e.g., `2026-03-21T14:30:00Z`). Timezone offsets (e.g., `+05:30`) MUST be rejected.
-- The inner `SHA-384(requestBody)` is encoded as lowercase hex (96 chars) in the signing string, NOT raw bytes.
+- The inner `SHA-256(requestBody)` is encoded as lowercase hex (96 chars) in the signing string, NOT raw bytes.
 - Nonce MUST be 16 cryptographically random bytes, hex-encoded (32 chars).
 - Server MUST reject proofs where `|now - timestamp| > 300` seconds (5-minute window).
 - Server MUST track seen nonces for 5-minute window. Duplicate nonce returns 409 Conflict.
@@ -460,11 +460,11 @@ X-AID-PROOF = base64url(Ed25519Sign(privateKey, signatureInput))
 The server countersigns every response to enable mutual authentication:
 
 ```
-providerSignatureInput = SHA-384(
+providerSignatureInput = SHA-256(
   providerDid + "\n" +
   receiptId + "\n" +
   timestamp + "\n" +
-  SHA-384(responseBody)
+  SHA-256(responseBody)
 )
 
 X-AID-PROVIDER-PROOF = base64url(Ed25519Sign(serverPrivateKey, providerSignatureInput))
@@ -486,7 +486,7 @@ Every AID transaction produces a dual-signed, Merkle-anchored receipt.
   "version": "1.0.0",
   "receiptId": "rcpt-a1b2c3d4e5f6g7h8",
   "timestamp": "2026-03-21T14:30:00Z",
-  "hashAlgorithm": "sha384",
+  "hashAlgorithm": "sha256",
   "payer": {
     "did": "did:key:zABC...",
     "trustScore": 87
@@ -498,15 +498,15 @@ Every AID transaction produces a dual-signed, Merkle-anchored receipt.
   "service": {
     "id": "sol-price-data",
     "type": "data_query",
-    "inputHash": "sha384:1f2e...",
-    "resultHash": "sha384:af3b..."
+    "inputHash": "sha256:1f2e...",
+    "resultHash": "sha256:af3b..."
   },
   "trust": {
-    "merkleRoot": "sha384:9c4d...",
+    "merkleRoot": "sha256:9c4d...",
     "merkleProof": [
-      { "position": "left", "hash": "sha384:aabb..." },
-      { "position": "right", "hash": "sha384:ccdd..." },
-      { "position": "left", "hash": "sha384:eeff..." }
+      { "position": "left", "hash": "sha256:aabb..." },
+      { "position": "right", "hash": "sha256:ccdd..." },
+      { "position": "left", "hash": "sha256:eeff..." }
     ],
     "snapshotId": "snap-xyz",
     "snapshotTimestamp": "2026-03-21T12:00:00Z"
@@ -529,17 +529,17 @@ The `trust.merkleProof` field is an ordered array of sibling hashes from leaf to
 
 ```json
 [
-  { "position": "left",  "hash": "sha384:aabb..." },
-  { "position": "right", "hash": "sha384:ccdd..." },
-  { "position": "left",  "hash": "sha384:eeff..." }
+  { "position": "left",  "hash": "sha256:aabb..." },
+  { "position": "right", "hash": "sha256:ccdd..." },
+  { "position": "left",  "hash": "sha256:eeff..." }
 ]
 ```
 
 **Verification algorithm:**
-1. Start with `currentHash = SHA-384(receiptId + timestamp + payerDid + providerDid)`.
+1. Start with `currentHash = SHA-256(receiptId + timestamp + payerDid + providerDid)`.
 2. For each proof element:
-   - If `position` is `"left"`: `currentHash = SHA-384(element.hash + currentHash)`
-   - If `position` is `"right"`: `currentHash = SHA-384(currentHash + element.hash)`
+   - If `position` is `"left"`: `currentHash = SHA-256(element.hash + currentHash)`
+   - If `position` is `"right"`: `currentHash = SHA-256(currentHash + element.hash)`
 3. The final `currentHash` MUST equal `trust.merkleRoot`.
 
 Proof size is O(log n) — 20 hashes for 1M agents (640 bytes).
@@ -547,7 +547,7 @@ Proof size is O(log n) — 20 hashes for 1M agents (640 bytes).
 ### 5.3 Payer Signature Input
 
 ```
-payerSignatureInput = SHA-384(
+payerSignatureInput = SHA-256(
   payerDid + "\n" +
   receiptId + "\n" +
   timestamp + "\n" +
@@ -668,7 +668,7 @@ Every AID-compatible server MUST expose `GET /aid/heartbeat`:
     "current": "Ed25519",
     "supported": ["Ed25519"],
     "planned": ["ML-DSA-44"],
-    "hashAlgorithm": "sha384",
+    "hashAlgorithm": "sha256",
     "pqcReady": false,
     "migrationTarget": "ML-DSA-44",
     "migrationDate": null
@@ -828,7 +828,7 @@ server.tool('get-data', { query: z.string() }, async (params, extra) => {
       "trustVerdict": "proceed",
       "verified": true,
       "attestationCount": 1247,
-      "merkleRoot": "sha384:9c4d...",
+      "merkleRoot": "sha256:9c4d...",
       "heartbeatUrl": "https://api.example.com/aid/heartbeat",
       "trustTimestamp": "2026-03-21T14:00:00Z",
       "trustProof": "<Ed25519 signature>"
@@ -838,7 +838,7 @@ server.tool('get-data', { query: z.string() }, async (params, extra) => {
 ```
 
 **Requirements:**
-- `trustProof` MUST be an Ed25519 signature from the platform key over `SHA-384(did + "\n" + trustScore + "\n" + trustVerdict + "\n" + trustTimestamp)`.
+- `trustProof` MUST be an Ed25519 signature from the platform key over `SHA-256(did + "\n" + trustScore + "\n" + trustVerdict + "\n" + trustTimestamp)`.
 - Consumers MUST verify `trustProof` against the platform's public key (published at `/.well-known/aid-platform-key`).
 - Trust data older than 24 hours SHOULD be re-fetched from the `heartbeatUrl`.
 - Heartbeat responses MUST be signed with `X-AID-PROVIDER-PROOF`. Consumers MUST verify the signature before using any heartbeat data.
@@ -1029,7 +1029,7 @@ The heartbeat response includes a `decentralizationPhase` field (OPTIONAL) indic
 
 1. **HTTPS REQUIRED** — all AID endpoints MUST be served over TLS.
 2. **TIMESTAMP VALIDATION** — signatures include current timestamp. Server rejects `|now - timestamp| > 300s`.
-3. **BODY BINDING** — Ed25519 signature covers SHA-384 of request body.
+3. **BODY BINDING** — Ed25519 signature covers SHA-256 of request body.
 4. **NONCE TRACKING** — 16-byte random nonces tracked for 5-minute window. Duplicates rejected (409).
 5. **KEY ROTATION** — compromised keys can be rotated without losing identity (Section 2.4).
 6. **RATE LIMITING** — public endpoints SHOULD be rate-limited by IP.
@@ -1610,9 +1610,9 @@ Highly correlated reporters (independence 0.2) filing 10 reports have the effect
 - Path: `/aid/skills/sol-price`
 - Body: `{"token":"SOL"}`
 
-**Step 1:** Compute `SHA-384(body)`:
+**Step 1:** Compute `SHA-256(body)`:
 ```
-SHA-384('{"token":"SOL"}') = <96-char lowercase hex string>
+SHA-256('{"token":"SOL"}') = <96-char lowercase hex string>
 ```
 
 **Step 2:** Construct signing string (fields joined by `\n`):
@@ -1621,10 +1621,10 @@ did:key:z6MkTest1234
 2026-03-21T14:30:00Z
 a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8
 POST /aid/skills/sol-price
-<96-char SHA-384 hex of body>
+<96-char SHA-256 hex of body>
 ```
 
-**Step 3:** `signatureInput = SHA-384(signingString)`
+**Step 3:** `signatureInput = SHA-256(signingString)`
 
 **Step 4:** `proof = base64url(Ed25519Sign(privateKey, signatureInput))`
 
@@ -1641,20 +1641,20 @@ POST /aid/skills/sol-price
 
 **Step 1:** Apply JCS (RFC 8785) canonicalization — sort keys alphabetically at each level, serialize to minimal JSON (no whitespace).
 
-**Step 2:** `proofHash = SHA-384(canonicalized_json)` → 96-char lowercase hex string.
+**Step 2:** `proofHash = SHA-256(canonicalized_json)` → 96-char lowercase hex string.
 
 **Verification:** Any implementation running `@aidprotocol/trust-compute` with the same inputs MUST produce the same `proofHash`.
 
 ### A.4 Merkle Proof Verification
 
 **Given:**
-- Leaf: `SHA-384("rcpt-abc123" + "2026-03-21T14:30:00Z" + "did:key:zA" + "did:key:zB")`
-- Proof: `[{"position":"left","hash":"sha384:aa..."},{"position":"right","hash":"sha384:bb..."}]`
-- Expected root: `sha384:cc...`
+- Leaf: `SHA-256("rcpt-abc123" + "2026-03-21T14:30:00Z" + "did:key:zA" + "did:key:zB")`
+- Proof: `[{"position":"left","hash":"sha256:aa..."},{"position":"right","hash":"sha256:bb..."}]`
+- Expected root: `sha256:cc...`
 
 **Step 1:** `h = leaf_hash`
-**Step 2:** `h = SHA-384(proof[0].hash + h)` (position is "left", so sibling goes first)
-**Step 3:** `h = SHA-384(h + proof[1].hash)` (position is "right", so sibling goes second)
+**Step 2:** `h = SHA-256(proof[0].hash + h)` (position is "left", so sibling goes first)
+**Step 3:** `h = SHA-256(h + proof[1].hash)` (position is "right", so sibling goes second)
 **Step 4:** Assert `h == expected_root`
 
 ---
