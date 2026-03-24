@@ -7,7 +7,7 @@
  * Given attestation stats, produces a trust score + cryptographic proof hash.
  * Anyone can run this to independently verify scores published by any AID oracle.
  *
- * Uses SHA-384 for proof hashes (quantum-resistant, NIST PQC migration ready).
+ * Uses SHA-256 for proof hashes (aligned with spec + reference implementation).
  * Algorithm-agile: hashAlgorithm field in output enables future migration.
  *
  * @license MIT
@@ -16,8 +16,8 @@
 
 import { createHash } from 'crypto';
 
-/** Hash algorithm used for proof hashes. SHA-384 for quantum resistance. */
-export const HASH_ALGORITHM = 'sha384';
+/** Hash algorithm used for proof hashes. SHA-256 per AID-Trust spec. */
+export const HASH_ALGORITHM = 'sha256';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ export interface TrustScoreProof {
   inputs: TrustStats;
   /** The weights applied to each dimension. */
   weights: TrustWeights;
-  /** SHA-384 hash of JCS-canonicalized {inputs, weights, score}. */
+  /** SHA-256 hash of JCS-canonicalized {inputs, weights, score}. */
   proofHash: string;
   /** Formula version identifier. */
   formulaVersion: string;
@@ -67,8 +67,8 @@ export interface TrustVerdictResult {
 /** Supported signing algorithms. Ed25519 is the default. ML-DSA for PQC migration. */
 export type SigningAlgorithm = 'Ed25519' | 'ML-DSA-65' | 'SLH-DSA';
 
-/** Supported hash algorithms. SHA-384 is the default. */
-export type HashAlgorithm = 'sha384' | 'sha256' | 'sha3-256';
+/** Supported hash algorithms. SHA-256 is the default. */
+export type HashAlgorithm = 'sha256' | 'sha3-256';
 
 /**
  * Abstract signing interface for AID protocol operations.
@@ -131,7 +131,7 @@ export interface AidSigner {
 export class TestSigner implements AidSigner {
   readonly did: string;
   readonly algorithm: SigningAlgorithm = 'Ed25519';
-  readonly hashAlgorithm: HashAlgorithm = 'sha384';
+  readonly hashAlgorithm: HashAlgorithm = 'sha256';
   private readonly privateKey: ReturnType<typeof import('crypto').createPrivateKey>;
   private readonly publicKeyRaw: Buffer;
 
@@ -301,7 +301,7 @@ export function jcsSerialize(value: unknown): string {
  *
  * @param stats - Attestation statistics (successRate, chainCoverage, attestationCount, manifestAdherence)
  * @param weights - Optional custom weights (defaults to DEFAULT_WEIGHTS)
- * @returns Trust score (0-100), inputs, weights, and SHA-384 proof hash
+ * @returns Trust score (0-100), inputs, weights, and SHA-256 proof hash
  */
 export function computeTrustScore(
   stats: TrustStats,
@@ -327,7 +327,7 @@ export function computeTrustScore(
   // Clamp to 0-100
   const clampedScore = Math.max(0, Math.min(100, score));
 
-  // Proof hash = SHA-384 of JCS-canonicalized {inputs, weights, score}
+  // Proof hash = SHA-256 of JCS-canonicalized {inputs, weights, score}
   const proofData = { inputs: stats, weights, score: clampedScore };
   const canonical = jcsSerialize(proofData);
   const proofHash = createHash(HASH_ALGORITHM).update(canonical).digest('hex');

@@ -30,7 +30,7 @@
   },
   "homepage": "https://aidprotocol.org",
   "dependencies": {
-    "@aidprotocol/trust-compute": "^2.0.0"
+    "@aidprotocol/trust-compute": "^3.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.20.0"

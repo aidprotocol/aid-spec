@@ -1,56 +1,194 @@
 {
-  "testCases": [
+  "name": "AID Trust Score Computation",
+  "version": "1.0.0",
+  "description": "Deterministic test vectors for trust score computation. Any conformant implementation MUST produce identical scores and proof hashes for the same inputs.",
+  "hashAlgorithm": "sha256",
+  "formulaVersion": "1.0.0",
+  "weights": {
+    "successRate": 40,
+    "chainCoverage": 25,
+    "volume": 20,
+    "manifestAdherence": 15
+  },
+  "vectors": [
     {
-      "description": "Trust score computation with proof hash (v1.0 formula)",
-      "inputs": {
+      "id": "ts-001",
+      "description": "High-trust agent — spec reference example",
+      "type": "positive",
+      "input": {
         "successRate": 0.95,
         "chainCoverage": 0.88,
         "attestationCount": 247,
-        "manifestAdherence": 0.92,
-        "verificationMultiplier": 1
-      },
-      "weights": {
-        "successRate": 40,
-        "chainCoverage": 25,
-        "volume": 20,
-        "manifestAdherence": 15
+        "manifestAdherence": 0.92
       },
       "intermediate": {
         "volumeNormalized": 0.247,
         "rawScore": 78.74,
-        "jcsCanonicalizedProofData": "{\"inputs\":{\"attestationCount\":247,\"chainCoverage\":0.88,\"manifestAdherence\":0.92,\"successRate\":0.95},\"score\":79,\"weights\":{\"chainCoverage\":25,\"manifestAdherence\":15,\"successRate\":40,\"volume\":20}}"
+        "jcsCanonical": "{\"inputs\":{\"attestationCount\":247,\"chainCoverage\":0.88,\"manifestAdherence\":0.92,\"successRate\":0.95},\"score\":79,\"weights\":{\"chainCoverage\":25,\"manifestAdherence\":15,\"successRate\":40,\"volume\":20}}"
       },
-      "expected": {
+      "expectedOutput": {
         "score": 79,
         "verdict": "standard",
-        "proofHash": "59410011a6395a8f86f8669b86e99aa5995584da2a0ae729bffe87d9bef430337d727befc196169a6a5e352170aad1e3"
+        "proofHash": "f3e1319eec1e7254402684faebb00b62132f0e7ebaa7573f0d13ad6caa0d998b"
       }
     },
     {
-      "description": "Cross-implementation reference vector — every AID implementation MUST produce this exact hash",
-      "inputs": {
+      "id": "ts-002",
+      "description": "New agent — zero history, manifestAdherence defaults to 0.5",
+      "type": "positive",
+      "input": {
+        "successRate": 0,
+        "chainCoverage": 0,
+        "attestationCount": 0,
+        "manifestAdherence": 0
+      },
+      "intermediate": {
+        "volumeNormalized": 0,
+        "manifestDefault": 0.5,
+        "rawScore": 7.5
+      },
+      "expectedOutput": {
+        "score": 8,
+        "verdict": "new",
+        "proofHash": "56a37251298b176e4d29236f2715326131cd8ccb92b9349d03efe7ba2c4dbbff"
+      },
+      "notes": "manifestAdherence defaults to 0.5 when both attestationCount=0 and manifestAdherence=0. round(7.5) = 8."
+    },
+    {
+      "id": "ts-003",
+      "description": "Perfect agent — all dimensions at maximum",
+      "type": "positive",
+      "input": {
+        "successRate": 1.0,
+        "chainCoverage": 1.0,
+        "attestationCount": 1000,
+        "manifestAdherence": 1.0
+      },
+      "expectedOutput": {
+        "score": 100,
+        "verdict": "proceed",
+        "proofHash": "3352dd93239c0fd4226e7f5687e3ccc2c5d5ab50bba333a470d3c0cbeae0f96c"
+      }
+    },
+    {
+      "id": "ts-004",
+      "description": "Mid-range agent — moderate performance",
+      "type": "positive",
+      "input": {
+        "successRate": 0.75,
+        "chainCoverage": 0.60,
+        "attestationCount": 50,
+        "manifestAdherence": 0.50
+      },
+      "intermediate": {
+        "volumeNormalized": 0.05,
+        "rawScore": 53.5
+      },
+      "expectedOutput": {
+        "score": 54,
+        "verdict": "caution",
+        "proofHash": "ffa1bf85bb0aacac83125fe48866972ff0ea8adfc0686e82ac962e87e1c1dec5"
+      }
+    },
+    {
+      "id": "ts-005",
+      "description": "Sybil-like — high success, near-zero volume, no manifests",
+      "type": "positive",
+      "input": {
+        "successRate": 1.0,
+        "chainCoverage": 1.0,
+        "attestationCount": 3,
+        "manifestAdherence": 0.0
+      },
+      "intermediate": {
+        "volumeNormalized": 0.003,
+        "rawScore": 65.06
+      },
+      "expectedOutput": {
+        "score": 65,
+        "verdict": "standard",
+        "proofHash": "f8407486d36d3d9b170ebb5f30887f3f881c67d80e902884fb8c2985a0d635f9"
+      },
+      "notes": "attestationCount > 0 so manifestAdherence stays 0.0 (no default). High success with near-zero volume = Sybil pattern."
+    },
+    {
+      "id": "ts-006",
+      "description": "Volume cap — attestationCount above 1000 caps at 1.0",
+      "type": "positive",
+      "input": {
+        "successRate": 0.90,
+        "chainCoverage": 0.85,
+        "attestationCount": 5000,
+        "manifestAdherence": 0.80
+      },
+      "expectedOutput": {
+        "score": 89,
+        "verdict": "trusted",
+        "proofHash": "fbb307c123fc76df1878eff13460ff7f71e842050c75054082efa30553b5c675"
+      }
+    },
+    {
+      "id": "ts-007",
+      "description": "Cross-implementation reference — every AID implementation MUST produce this exact hash",
+      "type": "positive",
+      "input": {
         "successRate": 0.95,
         "chainCoverage": 0.8,
         "attestationCount": 500,
         "manifestAdherence": 0.9
       },
-      "weights": {
-        "successRate": 40,
-        "chainCoverage": 25,
-        "volume": 20,
-        "manifestAdherence": 15
-      },
       "intermediate": {
         "volumeNormalized": 0.5,
         "rawScore": 82.3,
-        "jcsCanonicalizedProofData": "{\"inputs\":{\"attestationCount\":500,\"chainCoverage\":0.8,\"manifestAdherence\":0.9,\"successRate\":0.95},\"score\":82,\"weights\":{\"chainCoverage\":25,\"manifestAdherence\":15,\"successRate\":40,\"volume\":20}}"
+        "jcsCanonical": "{\"inputs\":{\"attestationCount\":500,\"chainCoverage\":0.8,\"manifestAdherence\":0.9,\"successRate\":0.95},\"score\":82,\"weights\":{\"chainCoverage\":25,\"manifestAdherence\":15,\"successRate\":40,\"volume\":20}}"
       },
-      "expected": {
+      "expectedOutput": {
         "score": 82,
         "verdict": "trusted",
-        "proofHash": "becd619fd5ffb9d7b8efb89145fb0ea676926fb435873d68955ccc96b5bdadfe2c08f13741100a819463f68599f2a33b"
+        "proofHash": "41bab6eb255c8b6f993d992f6c4e7444968be4e7cb802d99c831fbe08885985f"
       },
-      "note": "If your implementation produces a different proofHash, your JCS or SHA-384 implementation is non-compliant"
+      "notes": "If your implementation produces a different proofHash, your JCS (RFC 8785) or SHA-256 implementation is non-compliant."
+    },
+    {
+      "id": "ts-008",
+      "description": "Tampered proof — modified score invalidates proof hash",
+      "type": "negative",
+      "input": {
+        "score": 99,
+        "inputs": {
+          "successRate": 0.95,
+          "chainCoverage": 0.88,
+          "attestationCount": 247,
+          "manifestAdherence": 0.92
+        },
+        "weights": {
+          "successRate": 40,
+          "chainCoverage": 25,
+          "volume": 20,
+          "manifestAdherence": 15
+        },
+        "proofHash": "f3e1319eec1e7254402684faebb00b62132f0e7ebaa7573f0d13ad6caa0d998b",
+        "formulaVersion": "1.0.0",
+        "hashAlgorithm": "sha256"
+      },
+      "expectedOutput": {
+        "valid": false
+      },
+      "notes": "Score changed from 79 to 99 but proofHash not recomputed. verifyTrustProof() MUST return false."
     }
+  ],
+  "verdictBoundaries": [
+    { "score": 0, "verdict": "new" },
+    { "score": 19, "verdict": "new" },
+    { "score": 20, "verdict": "building" },
+    { "score": 39, "verdict": "building" },
+    { "score": 40, "verdict": "caution" },
+    { "score": 59, "verdict": "caution" },
+    { "score": 60, "verdict": "standard" },
+    { "score": 79, "verdict": "standard" },
+    { "score": 80, "verdict": "trusted" },
+    { "score": 89, "verdict": "trusted" },
+    { "score": 90, "verdict": "proceed" },
+    { "score": 100, "verdict": "proceed" }
   ]
 }
