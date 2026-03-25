@@ -1,9 +1,11 @@
 {
   "name": "AID Trust Score Computation",
   "version": "1.0.0",
-  "description": "Deterministic test vectors for trust score computation. Any conformant implementation MUST produce identical scores and proof hashes for the same inputs.",
+  "description": "Deterministic test vectors for trust score computation per Section 4.1.2. Every intermediate value is included so cross-language divergence is pinpointed to the exact step. All arithmetic is IEEE 754 binary64.",
   "hashAlgorithm": "sha256",
   "formulaVersion": "1.0.0",
+  "roundingMode": "halfUp: floor(x + 0.5) for x >= 0",
+  "evaluationOrder": "left-to-right: rawScore = ((d1 + d2) + d3) + d4",
   "weights": {
     "successRate": 40,
     "chainCoverage": 25,
@@ -13,7 +15,7 @@
   "vectors": [
     {
       "id": "ts-001",
-      "description": "High-trust agent — spec reference example",
+      "description": "High-trust agent — spec reference example (Section 4.1.2 worked example)",
       "type": "positive",
       "input": {
         "successRate": 0.95,
@@ -22,7 +24,11 @@
         "manifestAdherence": 0.92
       },
       "intermediate": {
-        "volumeNormalized": 0.247,
+        "volume": 0.247,
+        "d1": 38,
+        "d2": 22,
+        "d3": 4.9399999999999995,
+        "d4": 13.8,
         "rawScore": 78.74,
         "jcsCanonical": "{\"inputs\":{\"attestationCount\":247,\"chainCoverage\":0.88,\"manifestAdherence\":0.92,\"successRate\":0.95},\"score\":79,\"weights\":{\"chainCoverage\":25,\"manifestAdherence\":15,\"successRate\":40,\"volume\":20}}"
       },
@@ -30,7 +36,8 @@
         "score": 79,
         "verdict": "standard",
         "proofHash": "f3e1319eec1e7254402684faebb00b62132f0e7ebaa7573f0d13ad6caa0d998b"
-      }
+      },
+      "notes": "d3 = 4.9399999999999995 (not 4.94) — exact IEEE 754 binary64 value. These are different doubles."
     },
     {
       "id": "ts-002",
@@ -43,26 +50,38 @@
         "manifestAdherence": 0
       },
       "intermediate": {
-        "volumeNormalized": 0,
-        "manifestDefault": 0.5,
-        "rawScore": 7.5
+        "volume": 0,
+        "d1": 0,
+        "d2": 0,
+        "d3": 0,
+        "d4": 7.5,
+        "rawScore": 7.5,
+        "manifestDefault": 0.5
       },
       "expectedOutput": {
         "score": 8,
         "verdict": "new",
         "proofHash": "56a37251298b176e4d29236f2715326131cd8ccb92b9349d03efe7ba2c4dbbff"
       },
-      "notes": "manifestAdherence defaults to 0.5 when both attestationCount=0 and manifestAdherence=0. round(7.5) = 8."
+      "notes": "manifestAdherence defaults to 0.5 when both attestationCount=0 and manifestAdherence=0. roundHalfUp(7.5) = 8."
     },
     {
       "id": "ts-003",
       "description": "Perfect agent — all dimensions at maximum",
       "type": "positive",
       "input": {
-        "successRate": 1.0,
-        "chainCoverage": 1.0,
+        "successRate": 1,
+        "chainCoverage": 1,
         "attestationCount": 1000,
-        "manifestAdherence": 1.0
+        "manifestAdherence": 1
+      },
+      "intermediate": {
+        "volume": 1,
+        "d1": 40,
+        "d2": 25,
+        "d3": 20,
+        "d4": 15,
+        "rawScore": 100
       },
       "expectedOutput": {
         "score": 100,
@@ -76,12 +95,16 @@
       "type": "positive",
       "input": {
         "successRate": 0.75,
-        "chainCoverage": 0.60,
+        "chainCoverage": 0.6,
         "attestationCount": 50,
-        "manifestAdherence": 0.50
+        "manifestAdherence": 0.5
       },
       "intermediate": {
-        "volumeNormalized": 0.05,
+        "volume": 0.05,
+        "d1": 30,
+        "d2": 15,
+        "d3": 1,
+        "d4": 7.5,
         "rawScore": 53.5
       },
       "expectedOutput": {
@@ -95,13 +118,17 @@
       "description": "Sybil-like — high success, near-zero volume, no manifests",
       "type": "positive",
       "input": {
-        "successRate": 1.0,
-        "chainCoverage": 1.0,
+        "successRate": 1,
+        "chainCoverage": 1,
         "attestationCount": 3,
-        "manifestAdherence": 0.0
+        "manifestAdherence": 0
       },
       "intermediate": {
-        "volumeNormalized": 0.003,
+        "volume": 0.003,
+        "d1": 40,
+        "d2": 25,
+        "d3": 0.06,
+        "d4": 0,
         "rawScore": 65.06
       },
       "expectedOutput": {
@@ -116,10 +143,18 @@
       "description": "Volume cap — attestationCount above 1000 caps at 1.0",
       "type": "positive",
       "input": {
-        "successRate": 0.90,
+        "successRate": 0.9,
         "chainCoverage": 0.85,
         "attestationCount": 5000,
-        "manifestAdherence": 0.80
+        "manifestAdherence": 0.8
+      },
+      "intermediate": {
+        "volume": 1,
+        "d1": 36,
+        "d2": 21.25,
+        "d3": 20,
+        "d4": 12,
+        "rawScore": 89.25
       },
       "expectedOutput": {
         "score": 89,
@@ -138,8 +173,12 @@
         "manifestAdherence": 0.9
       },
       "intermediate": {
-        "volumeNormalized": 0.5,
-        "rawScore": 82.3,
+        "volume": 0.5,
+        "d1": 38,
+        "d2": 20,
+        "d3": 10,
+        "d4": 13.5,
+        "rawScore": 81.5,
         "jcsCanonical": "{\"inputs\":{\"attestationCount\":500,\"chainCoverage\":0.8,\"manifestAdherence\":0.9,\"successRate\":0.95},\"score\":82,\"weights\":{\"chainCoverage\":25,\"manifestAdherence\":15,\"successRate\":40,\"volume\":20}}"
       },
       "expectedOutput": {
@@ -147,7 +186,7 @@
         "verdict": "trusted",
         "proofHash": "41bab6eb255c8b6f993d992f6c4e7444968be4e7cb802d99c831fbe08885985f"
       },
-      "notes": "If your implementation produces a different proofHash, your JCS (RFC 8785) or SHA-256 implementation is non-compliant."
+      "notes": "If your implementation produces a different proofHash, your JCS (RFC 8785) or SHA-256 implementation is non-compliant. rawScore = 81.5 is a .5 boundary — roundHalfUp(81.5) = 82, not 81."
     },
     {
       "id": "ts-008",
@@ -178,17 +217,53 @@
     }
   ],
   "verdictBoundaries": [
-    { "score": 0, "verdict": "new" },
-    { "score": 19, "verdict": "new" },
-    { "score": 20, "verdict": "building" },
-    { "score": 39, "verdict": "building" },
-    { "score": 40, "verdict": "caution" },
-    { "score": 59, "verdict": "caution" },
-    { "score": 60, "verdict": "standard" },
-    { "score": 79, "verdict": "standard" },
-    { "score": 80, "verdict": "trusted" },
-    { "score": 89, "verdict": "trusted" },
-    { "score": 90, "verdict": "proceed" },
-    { "score": 100, "verdict": "proceed" }
+    {
+      "score": 0,
+      "verdict": "new"
+    },
+    {
+      "score": 19,
+      "verdict": "new"
+    },
+    {
+      "score": 20,
+      "verdict": "building"
+    },
+    {
+      "score": 39,
+      "verdict": "building"
+    },
+    {
+      "score": 40,
+      "verdict": "caution"
+    },
+    {
+      "score": 59,
+      "verdict": "caution"
+    },
+    {
+      "score": 60,
+      "verdict": "standard"
+    },
+    {
+      "score": 79,
+      "verdict": "standard"
+    },
+    {
+      "score": 80,
+      "verdict": "trusted"
+    },
+    {
+      "score": 89,
+      "verdict": "trusted"
+    },
+    {
+      "score": 90,
+      "verdict": "proceed"
+    },
+    {
+      "score": 100,
+      "verdict": "proceed"
+    }
   ]
 }

@@ -261,6 +261,58 @@ The verification multiplier is an application-layer adjustment. It MUST NOT be i
 
 The adjusted score is used for verdict determination (Section 4.4). The base score is used for proof verification and cross-implementation comparison.
 
+#### 4.1.2 Deterministic Computation Algorithm
+
+Implementations MUST use IEEE 754 binary64 (double-precision floating-point) for all trust score arithmetic. The computation is specified as a numbered algorithm. Every conformant implementation MUST produce identical intermediate values at every step for the same inputs.
+
+**Algorithm:**
+
+Given inputs `successRate` (0-1), `chainCoverage` (0-1), `attestationCount` (non-negative integer), `manifestAdherence` (0-1), and default weights `W = {successRate: 40, chainCoverage: 25, volume: 20, manifestAdherence: 15}`:
+
+1. **Normalize volume:** `volume = min(attestationCount / 1000.0, 1.0)`
+2. **Apply manifest default:** If `attestationCount == 0` AND `manifestAdherence == 0`, set `manifestAdherence = 0.5`. Otherwise, keep the original value.
+3. **Compute dimension products** (each multiplication is independent):
+   - `d1 = successRate × W.successRate`
+   - `d2 = chainCoverage × W.chainCoverage`
+   - `d3 = volume × W.volume`
+   - `d4 = manifestAdherence × W.manifestAdherence`
+4. **Sum left-to-right:** `rawScore = ((d1 + d2) + d3) + d4`
+   Parentheses indicate REQUIRED evaluation order. Do NOT reorder or use fused operations.
+5. **Round to integer (half-up):** `baseScore = floor(rawScore + 0.5)`
+   This is "round half up" — if the fractional part is exactly 0.5, round toward positive infinity.
+6. **Clamp:** `baseScore = max(0, min(100, baseScore))`
+
+**Rounding mode is critical.** At score boundaries (e.g., rawScore = 89.5), the rounding mode determines whether an agent is `trusted` (89) or `proceed`-eligible (90). A single bit of divergence between implementations breaks the determinism guarantee.
+
+**Cross-language implementation:**
+
+| Language | `roundHalfUp(x)` for x ≥ 0 | Caution |
+|----------|---------------------------|---------|
+| JavaScript | `Math.round(x)` | Correct for non-negative values |
+| Python | `math.floor(x + 0.5)` | Do NOT use `round(x)` — Python uses banker's rounding (round-half-to-even) |
+| Rust | `(x + 0.5).floor() as i32` | Do NOT use `.round()` — Rust rounds half away from zero (same result for positive, differs for negative) |
+| Go | `int(math.Floor(x + 0.5))` | Do NOT use `math.Round(x)` — Go rounds half away from zero |
+
+**Worked example (ts-001):**
+
+```
+Inputs: successRate=0.95, chainCoverage=0.88, attestationCount=247, manifestAdherence=0.92
+
+Step 1: volume = min(247 / 1000, 1) = 0.247
+Step 2: attestationCount > 0, so manifestAdherence stays 0.92
+Step 3: d1 = 0.95 × 40 = 38.0
+        d2 = 0.88 × 25 = 22.0
+        d3 = 0.247 × 20 = 4.9399999999999995  ← exact IEEE 754 binary64 value
+        d4 = 0.92 × 15 = 13.8
+Step 4: rawScore = ((38.0 + 22.0) + 4.9399999999999995) + 13.8 = 78.74
+Step 5: baseScore = floor(78.74 + 0.5) = floor(79.24) = 79
+Step 6: clamp(79) = 79  ✓
+```
+
+Note: `0.247 × 20` produces `4.9399999999999995`, not `4.94`. These are different IEEE 754 doubles. Test vectors include the exact intermediate values so cross-language divergence is pinpointed to the exact step.
+
+Full intermediate test vectors are published in `test-vectors/trust-score.json`.
+
 ### 4.2 Trust Input Hierarchy (Abstract)
 
 AID-Trust defines input classes abstractly. AID-Receipt maps concrete constructs to these classes (see `protocols/composability.md`).
