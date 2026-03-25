@@ -884,6 +884,58 @@ Additional error codes (`AID_PAYMENT_REQUIRED`, `AID_SETTLEMENT_FAILED`, etc.) a
 
 **Migration path:** If the ecosystem converges on RFC 9421 for agent authentication, AID could define an RFC 9421 profile that maps AID headers to structured field components. The cryptographic operations (Ed25519 + SHA-256) are identical — only the framing differs. This would be a non-breaking additive change (support both, prefer 9421 when negotiated via `X-AID-VERSION`).
 
+### 8.5 Cost-Based Security Bound
+
+AID-Trust's security does not depend on estimating attacker detection probability. It depends on the economic cost of building trust being higher than the benefit of gaming.
+
+**Theorem:** For any agent with trust score S, gaming is a dominated strategy if:
+
+```
+p_min = B_max / (C(S) + NPV)
+```
+
+Where:
+- `C(S)` = cost to reach score S through honest transactions
+- `NPV` = net present value of future honest earnings at score S
+- `B_max` = maximum benefit per gaming round (trust-gated discount)
+- `p_min` = minimum detection probability for equilibrium to hold
+
+**Worked example (score 80, "trusted" tier):**
+
+```
+C(80)  = ~$80   (real transactions over ~2 months)
+NPV    = ~$1,140 ($1.90/round × 600 rounds discounted)
+B_max  = ~$2.40  (25% discount per transaction)
+
+p_min  = $2.40 / ($80 + $1,140)
+p_min  = $2.40 / $1,220
+p_min  = 0.002 (0.2%)
+```
+
+**The equilibrium holds for any detection probability above 0.2%.** The estimated detection rate (p ≈ 0.15) provides a **75× safety margin**.
+
+**Why this bound is robust:**
+
+1. **The trust score IS the stake.** An agent invests real money and time to build trust. Gaming risks losing all accumulated trust — the equivalent of a slashing penalty, enforced by the scoring formula rather than a smart contract.
+
+2. **The bound is independent of detection mechanism.** It holds regardless of whether detection comes from graph analysis, behavioral signals, counterparty reports, or validator review. Any mechanism achieving p > 0.2% is sufficient.
+
+3. **The bound tightens with ecosystem growth.** As more agents participate, `C(S)` increases (more diverse counterparties needed), `NPV` increases (more honest revenue available), and `p_min` decreases further. Security scales with adoption.
+
+4. **Gaming is self-penalizing at high tiers.** The `proceed` tier (score 90+) requires 6 months of history and $50 cumulative revenue. A Sybil maintaining this profile for 6 months while generating real revenue has, by definition, been a productive agent — the attack becomes indistinguishable from honest behavior.
+
+**Comparison to other systems:**
+
+| System | Security Basis | Depends On |
+|--------|---------------|------------|
+| Bitcoin PoW | Cost of hash power > block reward | Hardware costs (physics) |
+| Ethereum PoS | Slashed stake > MEV | Stake lockup (economic) |
+| FICO | 20+ years of calibration data | Historical outcomes |
+| eBay ratings | Volume of reviews | Review authenticity |
+| **AID-Trust** | **Cost to build trust > benefit of gaming** | **Transaction history (economic + time)** |
+
+AID-Trust's security model is closest to Ethereum PoS — the trust score functions as an implicit stake that is "slashed" (reset to zero) on detection. The key difference: AID's stake is earned through behavior over time, not deposited as capital. This makes the system accessible to agents without upfront capital while maintaining economic security.
+
 ---
 
 ## 9. Governance
@@ -897,7 +949,7 @@ server.use(aidTrust({ formulaVersion: '1.0.0' }));
 ```
 
 - **Patch (1.0.x):** Bug fixes, no output changes.
-- **Minor (1.x.0):** New optional dimensions, existing scores unchanged.
+- **Minor (1.x.0):** New optional dimensions, existing scores unchanged. v1.1 is expected to add a 5th dimension measuring behavioral authenticity — emergent signals from actual computation that are resistant to Sybil gaming.
 - **Major (x.0.0):** Weight changes, dimension removal, score output changes.
 
 Major version changes MUST be announced 30 days before activation. Middleware MUST NOT silently adopt new major versions.
