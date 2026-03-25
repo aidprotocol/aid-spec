@@ -468,6 +468,176 @@ Proof size is O(log n) — 20 hashes for 1M agents (640 bytes).
 
 Additional response headers (`X-AID-RECEIPT`, `X-AID-FEEDBACK-URL`) are defined by AID-Receipt.
 
+### 5.2.1 ABNF Grammar (RFC 5234)
+
+Formal syntax for all AID-Trust HTTP headers. Core rules (`ALPHA`, `DIGIT`, `HEXDIG`, `SP`) are from [RFC 5234 Appendix B](https://www.rfc-editor.org/rfc/rfc5234#appendix-B).
+
+```abnf
+; ── Request Headers ──────────────────────────────────────────────
+
+X-AID-DID           = "did:key:z" 1*base58btc-char
+                       ; W3C did:key with Ed25519 multicodec (0xed01)
+                       ; Example: did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK
+
+X-AID-PROOF         = 1*base64url-char
+                       ; Ed25519 signature over canonical signing input (Section 5.3)
+                       ; base64url encoding without padding (RFC 4648 §5)
+
+X-AID-TIMESTAMP     = date-time-z
+                       ; ISO 8601 UTC with mandatory Z suffix
+                       ; Server MUST reject timezone offsets (+/-HH:MM)
+
+X-AID-NONCE         = 32HEXDIG
+                       ; 16 cryptographically random bytes, lowercase hex-encoded
+                       ; Server tracks seen nonces for 300-second replay window
+
+X-AID-TRUST-SCORE   = 1*3DIGIT
+                       ; Optional, 0-100. Hint only — server MUST NOT use for authz
+
+X-AID-VERSION       = 1*DIGIT "." 1*DIGIT
+                       ; Protocol version (default "1.0")
+                       ; Server returns 406 if unsupported
+
+; ── Response Headers ─────────────────────────────────────────────
+
+X-AID-PROVIDER-DID   = "did:key:z" 1*base58btc-char
+                        ; Server's DID for mutual authentication
+
+X-AID-PROVIDER-PROOF = 1*base64url-char
+                        ; Server's Ed25519 countersignature (Section 5.4)
+
+X-AID-TRUST-VERIFIED = 1*3DIGIT
+                        ; Server's independently verified score for the caller
+
+; ── Onboarding Header ───────────────────────────────────────────
+
+X-AID-NEW            = 1*63(ALPHA / DIGIT / "-" / "_")
+                        ; Agent display name for zero-friction provisioning (Section 3.5)
+                        ; Max 63 chars, alphanumeric + hyphen + underscore
+
+; ── Shared Rules ─────────────────────────────────────────────────
+
+date-time-z      = 4DIGIT "-" 2DIGIT "-" 2DIGIT "T"
+                   2DIGIT ":" 2DIGIT ":" 2DIGIT "Z"
+                   ; e.g., 2026-03-21T14:30:00Z
+                   ; Fractional seconds MAY be present but are not required
+
+base58btc-char   = %x31-39 / %x41-48 / %x4A-4E / %x50-5A
+                 / %x61-6B / %x6D-7A
+                   ; Bitcoin base58: 1-9 A-H J-N P-Z a-k m-z
+                   ; Excludes 0, O, I, l (ambiguous characters)
+
+base64url-char   = ALPHA / DIGIT / "-" / "_"
+                   ; RFC 4648 §5, no padding
+```
+
+### 5.2.2 JSON Schema
+
+Schemas for the three core AID-Trust data structures. Implementations SHOULD use these for validation.
+
+**TrustScoreResult** — output of `computeTrustScore()` (Section 4.1):
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TrustScoreResult",
+  "type": "object",
+  "required": ["score", "inputs", "weights", "proofHash", "formulaVersion", "hashAlgorithm"],
+  "properties": {
+    "score": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Base score (Section 4.1)" },
+    "inputs": {
+      "type": "object",
+      "required": ["successRate", "chainCoverage", "attestationCount", "manifestAdherence"],
+      "properties": {
+        "successRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "chainCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "attestationCount": { "type": "integer", "minimum": 0 },
+        "manifestAdherence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "weights": {
+      "type": "object",
+      "required": ["successRate", "chainCoverage", "volume", "manifestAdherence"],
+      "properties": {
+        "successRate": { "type": "integer" },
+        "chainCoverage": { "type": "integer" },
+        "volume": { "type": "integer" },
+        "manifestAdherence": { "type": "integer" }
+      }
+    },
+    "proofHash": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "SHA-256 of JCS({inputs, weights, score})" },
+    "formulaVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "hashAlgorithm": { "type": "string", "enum": ["sha256"] }
+  }
+}
+```
+
+**HeartbeatResponse** — `GET /aid/heartbeat` (Section 6):
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HeartbeatResponse",
+  "type": "object",
+  "required": ["protocolVersion", "provider", "services", "cryptoAgility", "platformKey", "timestamp", "extensions"],
+  "properties": {
+    "protocolVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "provider": {
+      "type": "object",
+      "required": ["did", "trustScore"],
+      "properties": {
+        "did": { "type": "string", "pattern": "^did:key:z" },
+        "trustScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "uptime": { "type": "number", "minimum": 0, "maximum": 1 },
+        "verified": { "type": "boolean" }
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "price": { "type": "string" },
+          "trustGate": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "status": { "type": "string", "enum": ["healthy", "degraded", "offline"] }
+        }
+      }
+    },
+    "cryptoAgility": {
+      "type": "object",
+      "required": ["current", "supported", "hashAlgorithm"],
+      "properties": {
+        "current": { "type": "string" },
+        "supported": { "type": "array", "items": { "type": "string" } },
+        "planned": { "type": "array", "items": { "type": "string" } },
+        "hashAlgorithm": { "type": "string" },
+        "pqcReady": { "type": "boolean" }
+      }
+    },
+    "platformKey": { "type": "string", "description": "base64url Ed25519 public key" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "extensions": { "type": "object", "description": "Extended by AID-Receipt and AID-Settle" }
+  }
+}
+```
+
+**TrustVerdict** — score-to-verdict mapping (Section 4.4):
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TrustVerdict",
+  "type": "object",
+  "required": ["verdict"],
+  "properties": {
+    "verdict": { "type": "string", "enum": ["new", "building", "caution", "standard", "trusted", "proceed"] }
+  }
+}
+```
+
 ### 5.3 Client Signing (X-AID-PROOF)
 
 The canonical signing input binds the signature to the DID, timestamp, nonce, HTTP method, path, and request body:
@@ -688,6 +858,31 @@ Additional error codes (`AID_PAYMENT_REQUIRED`, `AID_SETTLEMENT_FAILED`, etc.) a
 - **JavaScript/TypeScript:** Node.js built-in `crypto` module, or `@noble/ed25519`
 - **Rust:** `ring` or `ed25519-dalek`
 - **C:** libsodium 1.0.20+
+
+### 8.4 Relationship to RFC 9421 (HTTP Message Signatures)
+
+[RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) defines a general-purpose framework for signing HTTP messages using component identifiers. AID-Trust uses a purpose-built signing scheme (Section 5.3) instead of adopting RFC 9421 directly.
+
+**Why AID-Trust does not use RFC 9421:**
+
+1. **DID binding.** AID signing binds the signature to the agent's `did:key` identifier as the first element of the signing input. RFC 9421 has no native DID concept — expressing this would require a custom derived component, adding complexity without interoperability benefit.
+2. **Body commitment.** AID computes `SHA-256(requestBody)` and includes it in the signing string. RFC 9421 uses `Content-Digest` (RFC 9530) for body coverage, which requires an additional header and a separate hash computation.
+3. **Mutual authentication.** AID requires both client and server to sign (Sections 5.3 and 5.4). RFC 9421 is designed for request signing; response signing requires a separate `Signature` header with different parameters, doubling the header complexity.
+4. **Simplicity.** AID's signing input is 5 concatenated fields → SHA-256 → Ed25519 sign. RFC 9421 requires signature base construction with structured fields, component identifiers, and signature parameters. For agent-to-agent communication where both sides run AID middleware, the simpler scheme reduces implementation surface.
+
+**How AID-Trust maps to RFC 9421 concepts:**
+
+| RFC 9421 Concept | AID-Trust Equivalent |
+|------------------|---------------------|
+| `keyid` parameter | `X-AID-DID` header |
+| `created` parameter | `X-AID-TIMESTAMP` header |
+| `nonce` parameter | `X-AID-NONCE` header |
+| `@method` component | Included in signing string (line 4) |
+| `@target-uri` component | Path included in signing string (line 4) |
+| `content-digest` component | `SHA-256(requestBody)` in signing string (line 5) |
+| `alg` parameter | `signatureAlgorithm` in AID document |
+
+**Migration path:** If the ecosystem converges on RFC 9421 for agent authentication, AID could define an RFC 9421 profile that maps AID headers to structured field components. The cryptographic operations (Ed25519 + SHA-256) are identical — only the framing differs. This would be a non-breaking additive change (support both, prefer 9421 when negotiated via `X-AID-VERSION`).
 
 ---
 
