@@ -975,14 +975,14 @@ CAN serve as a trust oracle for Level 1 implementations. Example: independent tr
 {
   "inputs": { "successRate": 0.95, "chainCoverage": 0.88, "attestationCount": 247, "manifestAdherence": 0.92 },
   "weights": { "successRate": 40, "chainCoverage": 25, "volume": 20, "manifestAdherence": 15 },
-  "score": 87
+  "score": 79
 }
 ```
 
 1. Apply JCS (RFC 8785) canonicalization.
-2. `proofHash = SHA-256(canonicalized_json)` → 64-char lowercase hex.
+2. `proofHash = SHA-256(canonicalized_json)` → `f3e1319eec1e7254402684faebb00b62132f0e7ebaa7573f0d13ad6caa0d998b`
 
-Any implementation MUST produce the same `proofHash` for the same inputs.
+Any implementation MUST produce the same `proofHash` for the same inputs. See `test-vectors/trust-score.json` for the full deterministic computation (Section 4.1.2).
 
 ### A.4 Merkle Proof Verification
 
@@ -999,12 +999,49 @@ Any implementation MUST produce the same `proofHash` for the same inputs.
 
 ---
 
-## Appendix B: References
+## Appendix B: RATS Architecture Mapping (RFC 9334)
+
+AID-Trust's trust scoring pipeline maps to the IETF Remote ATtestation procedureS (RATS) architecture ([RFC 9334](https://www.rfc-editor.org/rfc/rfc9334)). This appendix uses RATS terminology to help DIF and IETF reviewers situate AID-Trust within established frameworks.
+
+### B.1 Role Mapping
+
+| RATS Role | AID-Trust Equivalent | Description |
+|-----------|---------------------|-------------|
+| **Attester** | Agent (did:key holder) | Produces claims about its behavior via signed attestations |
+| **Verifier** | Trust oracle (Level 2 conformant, Section 10) | Appraises attestation evidence, computes trust scores |
+| **Relying Party** | Service consumer (Level 1 conformant) | Uses trust verdicts for access/pricing decisions |
+| **Endorser** | Cross-platform attestation source | Third-party claims (ERC-8004, external oracles) that strengthen trust signals |
+
+### B.2 Data Flow Mapping
+
+| RATS Concept | AID-Trust Equivalent | Section |
+|-------------|---------------------|---------|
+| **Evidence** | Signed attestation record | 4.5 |
+| **Attestation Result** | Trust score + proof hash + verdict | 4.1, 4.3, 4.4 |
+| **Reference Values** | Merkle-anchored trust snapshots | 4.7 |
+| **Endorsement** | Cross-platform attestation (weight 0.3) | 4.2 |
+| **Appraisal Policy** | Trust scoring formula (v1.0, 4 dimensions) | 4.1, 4.1.2 |
+| **Evidence freshness** | Timestamp validation (300s window) + nonce replay | 5.3, 8.1 |
+
+### B.3 Architectural Differences
+
+AID-Trust extends the RATS model in two ways:
+
+1. **Behavioral trust, not platform attestation.** RATS focuses on platform integrity (e.g., "is this device running trusted firmware?"). AID-Trust scores *behavioral history* — transaction success rates, attestation chain coverage, manifest adherence. The attester IS the agent's behavior over time, not its hardware.
+
+2. **Offline verification.** RATS typically requires online interaction with a Verifier. AID-Trust's Merkle-anchored snapshots + proof hashes enable fully offline verification — a Relying Party can verify a trust score with pure math (Ed25519 + SHA-256), no network calls to any Verifier.
+
+---
+
+## Appendix C: References
 
 - W3C DID Core v1.1: https://www.w3.org/TR/did-core/
 - W3C `did:key` Method: https://w3c-ccg.github.io/did-method-key/
 - JSON Canonicalization Scheme (RFC 8785): https://www.rfc-editor.org/rfc/rfc8785
+- ABNF Syntax (RFC 5234): https://www.rfc-editor.org/rfc/rfc5234
 - RFC 2119 (Key Words): https://www.rfc-editor.org/rfc/rfc2119
+- HTTP Message Signatures (RFC 9421): https://www.rfc-editor.org/rfc/rfc9421
+- RATS Architecture (RFC 9334): https://www.rfc-editor.org/rfc/rfc9334
 - DIF Trusted AI Agents Working Group: https://identity.foundation/working-groups/trusted-agents.html
 - NIST FIPS 204 (ML-DSA): https://csrc.nist.gov/pubs/fips/204/final
 - NIST IR 8547 (PQC Migration): https://csrc.nist.gov/pubs/ir/8547/final
