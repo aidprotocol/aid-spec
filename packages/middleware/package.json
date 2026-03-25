@@ -1,6 +1,6 @@
 {
   "name": "@aidprotocol/middleware",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "AID trust verification middleware for Express, Fastify, and any Node.js HTTP server",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -40,7 +40,7 @@
   },
   "homepage": "https://aidprotocol.org",
   "dependencies": {
-    "@aidprotocol/trust-compute": "^3.0.0"
+    "@aidprotocol/trust-compute": "^4.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.20.0"

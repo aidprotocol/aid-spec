@@ -60,7 +60,7 @@ export interface AidMiddlewareConfig {
   /** Timestamp tolerance in seconds (default: 300 = ±5 minutes) */
   timestampToleranceSeconds?: number;
 
-  /** Hash algorithm for signing input (default: 'sha384') */
+  /** Hash algorithm for signing input (default: 'sha256') */
   hashAlgorithm?: string;
 
   /** Called when a caller is rejected */
@@ -79,10 +79,6 @@ export interface AidInfo {
   trustScore: number;
   /** Trust verdict (new, building, caution, standard, trusted, proceed) */
   verdict: string;
-  /** Pricing discount (0-0.30) */
-  discount: number;
-  /** Settlement mode (immediate, standard, batched, deferred) */
-  settlementMode: string;
   /** Whether signature was cryptographically verified */
   signatureVerified: boolean;
   /** Whether the score came from cache */
@@ -272,7 +268,7 @@ export async function verifyAidRequest(
     failMode = 'closed',
     cacheTtlSeconds = 300,
     timestampToleranceSeconds = 300,
-    hashAlgorithm = 'sha384',
+    hashAlgorithm = 'sha256',
     onRejected,
     onVerified,
   } = config;
@@ -367,8 +363,6 @@ export async function verifyAidRequest(
       did,
       trustScore: score,
       verdict: verdictResult.verdict,
-      discount: verdictResult.discount,
-      settlementMode: verdictResult.settlementMode,
       signatureVerified: true,
       cached,
     },
