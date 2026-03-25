@@ -28,7 +28,7 @@ AID-Trust answers: *"Is this agent worth doing business with?"*
 - Trust verdicts (score → verdict mapping)
 - Anti-gaming mechanisms (decay, diversity, weighted feedback)
 - Key rotation and identity lifecycle
-- Error semantics (6 AID_* error codes)
+- Error semantics (5 AID_* error codes)
 - Privacy model (public verdicts, owner-only scores)
 
 **What AID-Trust does NOT define:**
@@ -98,7 +98,7 @@ Every agent has an AID document:
     "publicKeyMultibase": "z6Mk..."
   },
   "trustScore": {
-    "score": 87,
+    "score": 79,
     "inputs": {
       "successRate": 0.95,
       "chainCoverage": 0.88,
@@ -111,7 +111,7 @@ Every agent has an AID document:
       "volume": 20,
       "manifestAdherence": 15
     },
-    "proofHash": "<sha256 hex>",
+    "proofHash": "f3e1319eec1e7254402684faebb00b62132f0e7ebaa7573f0d13ad6caa0d998b",
     "formulaVersion": "1.0.0",
     "hashAlgorithm": "sha256"
   },
@@ -140,6 +140,8 @@ Every agent has an AID document:
 }
 ```
 
+**Note:** `trustScore.score` contains the **base score** (Section 4.1) — deterministic from attestation inputs alone. The proof hash covers this base score. Consumers MAY apply the verification multiplier (Section 4.1.1) at read time. For example, with one verified linked identity (Partial, 1.1×): `min(100, round(79 × 1.1)) = 87`.
+
 **Field requirements:**
 
 | Field | Required | Notes |
@@ -151,7 +153,7 @@ Every agent has an AID document:
 | `hashAlgorithm` | MUST | Hash algorithm for trust-layer hashing |
 | `agent` | MUST | Agent metadata |
 | `publicKey` | MUST | Verification key material |
-| `trustScore` | MUST | Current trust score with proof |
+| `trustScore` | MUST | Base trust score with proof hash |
 | `trustChain` | MUST | Merkle-anchored attestation chain summary |
 | `capabilities` | SHOULD | Derived from attestation history, not self-declared |
 | `issuance` | MUST | Issuer, timestamp, expiry |
@@ -222,11 +224,12 @@ Content-Type: application/json
 
 ### 4.1 Trust Score Formula (v1.0)
 
-The canonical trust scoring formula uses 4 behavioral dimensions:
+The canonical trust scoring formula uses 4 behavioral dimensions to produce a **base score**:
 
 ```
-rawScore = successRate * 40 + chainCoverage * 25 + volume * 20 + manifestAdherence * 15
-finalScore = min(100, round(rawScore * verificationMultiplier))
+volume    = min(attestationCount / 1000, 1)
+rawScore  = successRate × 40 + chainCoverage × 25 + volume × 20 + manifestAdherence × 15
+baseScore = max(0, min(100, round(rawScore)))
 ```
 
 | Dimension | Weight | Range | Source |
@@ -236,7 +239,17 @@ finalScore = min(100, round(rawScore * verificationMultiplier))
 | `volume` | 20% | 0-1 | `min(attestationCount / 1000, 1)` |
 | `manifestAdherence` | 15% | 0-1 | `manifest_aligned / (aligned + unaligned)`, defaults to 0.5 if no manifests |
 
-**Verification multiplier:**
+**Dimension defaults:** If a dimension has no data, it defaults to 0.5 (neutral) rather than 0.
+
+The base score is deterministic — given identical inputs, every conformant implementation MUST produce the same base score. The proof hash (Section 4.3) covers the base score. AID documents (Section 3.2) contain the base score.
+
+#### 4.1.1 Verification Adjustment (Application Layer)
+
+Implementations MAY apply a verification multiplier for display and verdict determination:
+
+```
+adjustedScore = min(100, round(baseScore × verificationMultiplier))
+```
 
 | Level | Multiplier | Criteria |
 |-------|------------|----------|
@@ -244,7 +257,9 @@ finalScore = min(100, round(rawScore * verificationMultiplier))
 | Partial | 1.1 | One verified linked identity |
 | Full | 1.2 | Two or more verified linked identities |
 
-**Dimension defaults:** If a dimension has no data, it defaults to 0.5 (neutral) rather than 0.
+The verification multiplier is an application-layer adjustment. It MUST NOT be included in the proof hash computation (Section 4.3). Verification status is dynamic — agents link and unlink external identities over time. Including dynamic state in the proof hash would break the determinism guarantee: same attestation inputs must always produce the same proof hash.
+
+The adjusted score is used for verdict determination (Section 4.4). The base score is used for proof verification and cross-implementation comparison.
 
 ### 4.2 Trust Input Hierarchy (Abstract)
 
@@ -260,36 +275,36 @@ AID-Trust defines input classes abstractly. AID-Receipt maps concrete constructs
 
 ### 4.3 Proof Hash
 
-Every trust score MUST include a cryptographic proof hash:
+Every trust score MUST include a cryptographic proof hash covering the **base score** (Section 4.1):
 
 ```
 proofHash = SHA-256(JCS({inputs, weights, score}))
 ```
 
-Where JCS is JSON Canonicalization Scheme (RFC 8785). Given identical inputs, every implementation MUST produce identical proof hashes.
+Where `score` is the base score (NOT the verification-adjusted score from Section 4.1.1), and JCS is JSON Canonicalization Scheme (RFC 8785). Given identical attestation inputs, every implementation MUST produce identical proof hashes regardless of the agent's current verification status.
 
 ### 4.4 Trust Verdicts
 
-AID-Trust defines the score-to-verdict mapping:
+AID-Trust defines the score-to-verdict mapping. Verdicts use the **adjusted score** (Section 4.1.1) — the base score with verification multiplier applied:
 
-| Score Range | Verdict |
-|-------------|---------|
+| Adjusted Score Range | Verdict |
+|----------------------|---------|
 | 0-19 | `new` |
 | 20-39 | `building` |
 | 40-59 | `caution` |
 | 60-79 | `standard` |
 | 80-89 | `trusted` |
-| 90+ (with verification + age + revenue gates) | `proceed` |
+| 90+ (with additional gates) | `proceed` |
 
 **`proceed` tier requirements (all must be met):**
-- Trust score 90 or above
+- Adjusted score 90 or above
 - Verification multiplier at "Partial" (1.1) or higher
 - Agent active for at least 6 months (from first attestation)
 - Agent has generated at least $50 cumulative platform revenue
 
 **`avoid` flag:** A separate manual flag applied by validators or structured reports (spam, fraud, copyright). Not score-based — an agent can be score 70 and flagged `avoid`. Removal requires admin review or validator consensus (3 validators agree). For settlement effects of the avoid flag, see AID-Settle.
 
-**Tier boundary resolution:** `compositeScore` is a float (e.g., 78.25). Tier boundaries use floor: 78.25 maps to `standard` (60-79).
+**Tier boundary resolution:** The adjusted score is a float (e.g., 78.25). Tier boundaries use floor: 78.25 maps to `standard` (60-79).
 
 Settlement modes and pricing discounts per verdict are defined by AID-Settle, not AID-Trust.
 

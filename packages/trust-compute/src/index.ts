@@ -58,8 +58,6 @@ export type TrustVerdict = 'new' | 'building' | 'caution' | 'standard' | 'truste
 
 export interface TrustVerdictResult {
   verdict: TrustVerdict;
-  discount: number;
-  settlementMode: 'immediate' | 'standard' | 'batched' | 'deferred';
 }
 
 // ─── Signing Interface ──────────────────────────────────────────────────────
@@ -344,15 +342,20 @@ export function computeTrustScore(
 
 /**
  * Derive trust verdict from score.
- * Verdicts determine pricing tier and settlement mode.
+ *
+ * Returns the verdict only — AID-Trust defines score-to-verdict mapping.
+ * Settlement modes and pricing discounts are AID-Settle concerns
+ * and are NOT part of this package. See @aidprotocol/settle-compute (future).
+ *
+ * @param score - The adjusted score (base score × verification multiplier)
  */
 export function getTrustVerdict(score: number): TrustVerdictResult {
-  if (score >= 90) return { verdict: 'proceed', discount: 0.30, settlementMode: 'deferred' };
-  if (score >= 80) return { verdict: 'trusted', discount: 0.25, settlementMode: 'batched' };
-  if (score >= 60) return { verdict: 'standard', discount: 0.20, settlementMode: 'batched' };
-  if (score >= 40) return { verdict: 'caution', discount: 0.10, settlementMode: 'standard' };
-  if (score >= 20) return { verdict: 'building', discount: 0, settlementMode: 'immediate' };
-  return { verdict: 'new', discount: 0, settlementMode: 'immediate' };
+  if (score >= 90) return { verdict: 'proceed' };
+  if (score >= 80) return { verdict: 'trusted' };
+  if (score >= 60) return { verdict: 'standard' };
+  if (score >= 40) return { verdict: 'caution' };
+  if (score >= 20) return { verdict: 'building' };
+  return { verdict: 'new' };
 }
 
 /**
