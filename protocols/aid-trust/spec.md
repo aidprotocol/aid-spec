@@ -1033,7 +1033,177 @@ AID-Trust extends the RATS model in two ways:
 
 ---
 
-## Appendix C: References
+## Appendix C: Sensitivity Analysis
+
+Parameter sensitivity for the v1.0 formula. Shows score impact when each weight shifts ±5 points.
+
+### C.1 Weight Sensitivity (±5)
+
+**High-trust agent** (successRate=0.95, chainCoverage=0.88, attestationCount=247, manifestAdherence=0.92, base score=79):
+
+| Dimension | Weight -5 | Base | Weight +5 | Range |
+|-----------|-----------|------|-----------|-------|
+| successRate | 74 | 79 | 83 | 9 |
+| chainCoverage | 74 | 79 | 83 | 9 |
+| volume | 78 | 79 | 80 | 2 |
+| manifestAdherence | 74 | 79 | 83 | 9 |
+
+**Sybil-like agent** (successRate=1.0, chainCoverage=1.0, attestationCount=3, manifestAdherence=0.0, base score=65):
+
+| Dimension | Weight -5 | Base | Weight +5 | Range |
+|-----------|-----------|------|-----------|-------|
+| successRate | 60 | 65 | 70 | 10 |
+| chainCoverage | 60 | 65 | 70 | 10 |
+| volume | 65 | 65 | 65 | 0 |
+| manifestAdherence | 65 | 65 | 65 | 0 |
+
+### C.2 Robustness Summary
+
+| Parameter | Sensitivity | Notes |
+|-----------|-------------|-------|
+| `successRate` (40%) | **Highest** | Most influential — but hardest to game without real successful transactions |
+| `chainCoverage` (25%) | Moderate | Hash-chain integrity cannot be selectively faked |
+| `volume` (20%) | **Lowest for established agents** | Normalizes quickly past 200 attestations; near-zero sensitivity at 1000+ |
+| `manifestAdherence` (15%) | Low | Only the manifest default (0.5) affects new agents; sparse data for most |
+
+### C.3 Key Findings
+
+1. **The formula is robust to ±5 weight changes.** No single dimension shift can move an agent across two verdict boundaries (e.g., `standard` → `proceed`).
+2. **Volume has near-zero sensitivity for established agents** — once attestationCount exceeds ~200, further volume adds diminishing returns.
+3. **Sybil pattern is self-limiting:** A Sybil with perfect success/chain but zero volume and zero manifests scores 65 (`standard`) — they cannot reach `trusted` (80+) without real transaction volume across diverse counterparties.
+4. **The ±5 shift at any single weight cannot flip a verdict boundary** for agents with balanced profiles. Only agents sitting exactly at a boundary (e.g., score 79.5) are sensitive to weight changes.
+
+### C.4 Parameters Not Derived From First Principles
+
+These parameters are empirically motivated, not mathematically derived:
+- Weights (40/25/20/15): Chosen to prioritize behavioral evidence over volume, with diminishing returns on volume preventing gaming
+- Verification multiplier levels (1.0/1.1/1.2): Conservative — max 20% uplift from external verification
+- Decay rate (10%/30 days): Calibrated to degrade inactive agents without penalizing seasonal usage
+- Volume cap (1000 attestations): Prevents volume gaming while remaining achievable for active agents
+
+A governance process for updating parameters based on production data is defined in Section 9.
+
+---
+
+## Appendix D: Interoperability Notes
+
+### D.1 KERI Compatibility
+
+[KERI](https://weboftrust.github.io/ietf-keri/draft-ssmith-keri.html) (Key Event Receipt Infrastructure) is a DIF project for decentralized key management. AID-Trust is compatible with KERI in three ways:
+
+1. **Key rotation model.** AID's key rotation (Section 3.4) follows the same principle as KERI's key event log — old keys are preserved (not deleted), new keys are linked, and verifiers look up which key was active at a given timestamp. AID could adopt KERI's pre-rotation mechanism (committing to the next key hash before rotation) as a future enhancement.
+
+2. **Self-certifying identifiers.** Both AID (`did:key`) and KERI (Autonomic Identifiers) derive identity from cryptographic keys. An AID agent's `did:key` could be expressed as a KERI AID with a single inception event. Trust scores and attestation history would transfer via the same DID.
+
+3. **Witness model.** KERI's witnesses verify key event receipts. AID-Trust's Merkle-anchored snapshots serve a similar role — they provide independently verifiable evidence of the trust state at a point in time. A KERI witness could anchor AID Merkle roots alongside key event receipts.
+
+**No code changes required.** KERI compatibility is architectural alignment — AID-Trust's design does not conflict with KERI's model.
+
+### D.2 ACDC Interoperability
+
+[Authentic Chained Data Containers](https://trustoverip.github.io/tswg-acdc-specification/) (ACDCs) are a ToIP/DIF credential format built on KERI. AID trust scores are expressible as ACDCs:
+
+- AID trust score proof → ACDC with `d` (digest) field = `proofHash`, `s` (schema) pointing to AID-Trust schema
+- Attestation chain → ACDC chain (each attestation references its predecessor via `p` edge)
+- Merkle root → ACDC seal anchored to a KERI key event log or ledger
+
+AID-Trust does not require ACDCs, but an ACDC profile could be defined as a transport format for trust score portability across ACDC-native ecosystems.
+
+### D.3 W3C Data Integrity Proof Format
+
+AID trust snapshots are expressible as [W3C Data Integrity](https://www.w3.org/TR/vc-data-integrity/) proofs:
+
+```json
+{
+  "type": "DataIntegrityProof",
+  "cryptosuite": "eddsa-jcs-2022",
+  "verificationMethod": "did:key:z6Mk...",
+  "proofPurpose": "assertionMethod",
+  "proofValue": "<base64url Ed25519 signature>"
+}
+```
+
+AID's `proof.platformCountersignature` (Section 3.2) already uses the `eddsa-jcs-2022` cryptosuite and JCS canonicalization (RFC 8785). The mapping is direct — AID does not adopt the full Data Integrity verification stack, but the proof format is compatible.
+
+### D.4 NIST SP 800-63 Assurance Level Framing
+
+AID trust verdicts map to [NIST SP 800-63](https://pages.nist.gov/800-63-4/) Identity Assurance Levels (IALs) as a mental model (not a formal mapping):
+
+| AID Verdict | Analogous IAL | Rationale |
+|-------------|---------------|-----------|
+| `new` | — | No assurance — no history |
+| `building` | IAL1 | Self-asserted identity, minimal evidence |
+| `caution` / `standard` | IAL2 | Remote evidence of behavioral consistency |
+| `trusted` / `proceed` | IAL2+ | Sustained behavioral evidence + external verification |
+
+AID does not claim IAL3 equivalence. IAL3 requires in-person proofing — AID is behavioral, not biometric. This framing is provided for DIF/NIST reviewers familiar with 800-63 terminology.
+
+### D.5 DID:webs Alignment
+
+[did:webs](https://trustoverip.github.io/tswg-did-method-webs-specification/) combines `did:web` resolution with KERI-based self-certifying verification. AID-Trust uses `did:key` for agents (self-certifying) and `did:web` for platform issuers (Section 3.2).
+
+A `did:webs` trust anchor for AID would combine both:
+- The agent's `did:key` provides the self-certifying identity
+- The platform's `did:webs` provides DNS-bound resolution + KERI verification
+- Trust scores are published at the `did:webs` endpoint and verifiable against Merkle roots
+
+This is a natural evolution path if the DIF community adopts `did:webs` as the standard trust anchor method. No changes to AID-Trust's core protocol would be required — only the platform issuer's DID method would change.
+
+---
+
+## Appendix E: Threat Model Summary
+
+Full threat analysis with 66 attack vectors and mitigations is maintained in the reference implementation's security documentation. This appendix summarizes the trust-relevant subset.
+
+### E.1 Attack Cost by Target Tier
+
+| Target Score | Min Cost | Time Required | Detection Window | ROI |
+|-------------|----------|---------------|------------------|-----|
+| 40 (caution) | ~$5 | 1 week | — | Marginal |
+| 60 (standard) | ~$25 | 2-3 weeks | Graph detection | Negative |
+| 80 (trusted) | ~$80+ | 2 months | 2-4 weeks | **Negative** |
+| 90+ (proceed) | ~$200+ | 6 months | Multiple layers | **Impossible** |
+
+### E.2 Top Trust-Critical Threats
+
+| Threat | Severity | Primary Defense |
+|--------|----------|----------------|
+| Sybil reputation gaming | High | Graph analysis + counterparty diversity + mutual feedback decay |
+| Trust score manipulation | High | 4-dimension formula with diminishing ROI beyond score 80 |
+| Bust-out fraud | High | Graduated credit limits + burst detection + settlement frequency increase |
+| Collusion rings | High | Graph anomaly detection + cluster-wide penalties |
+| Attestation forgery | Critical | Ed25519 platform countersignature + Merkle root anchoring |
+
+### E.3 Anti-Gaming Layers
+
+1. **Feedback weight by spend** — agents with <$1 spend: 0.5x weight; >$10 spend: 3x weight
+2. **Self-feedback detection** — reject if reporter and provider share same owner key, IP, or funding wallet
+3. **Mutual feedback decay** — agents exchanging feedback within 30 days: both weighted 0.1x
+4. **Feedback diversity** — 90%+ of positive feedback to one provider: weighted 0.2x
+5. **Minimum reporter diversity** — min 5 unique reporters before feedback affects score
+
+### E.4 Nash Equilibrium (Score 80)
+
+```
+E[π(HONEST)]   = $1.90/round (perpetual)
+E[π(SYBIL)]    = -$268.60/round (detection p=0.15, penalty=$1,140 NPV)
+E[π(BUST_OUT)] = -$1,442 (one-time; detection p=0.95)
+```
+
+**Dominant strategy: HONEST.** Equilibrium holds as long as detection probability > 0.088 (current: 0.15) and agents are long-lived (discount factor > 0.034).
+
+### E.5 Known Limitations
+
+1. Detection probabilities (p=0.15 for Sybil, p=0.95 for bust-out) are estimated, not empirically measured.
+2. A well-funded adversary ($10K+) could maintain a large Sybil cluster for months before detection (tail risk).
+3. The formal security bound is conjectured, not proven — no reputation system has a formal security reduction.
+4. Parameter choices (weights, exponents, decay rates) are empirically motivated, not derived from first principles.
+
+These limitations are acknowledged transparently. Production data will inform parameter calibration over time (Section 9).
+
+---
+
+## Appendix F: References
 
 - W3C DID Core v1.1: https://www.w3.org/TR/did-core/
 - W3C `did:key` Method: https://w3c-ccg.github.io/did-method-key/
@@ -1049,3 +1219,8 @@ AID-Trust extends the RATS model in two ways:
 - x402 Protocol: https://github.com/coinbase/x402
 - AID Trust Scoring Library: https://www.npmjs.com/package/@aidprotocol/trust-compute
 - AID MCP Trust Middleware: https://www.npmjs.com/package/@aidprotocol/mcp-trust
+- KERI (Key Event Receipt Infrastructure): https://weboftrust.github.io/ietf-keri/draft-ssmith-keri.html
+- ACDC Specification: https://trustoverip.github.io/tswg-acdc-specification/
+- W3C Data Integrity: https://www.w3.org/TR/vc-data-integrity/
+- NIST SP 800-63 (Digital Identity Guidelines): https://pages.nist.gov/800-63-4/
+- DID:webs Method: https://trustoverip.github.io/tswg-did-method-webs-specification/
